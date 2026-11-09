@@ -102,3 +102,24 @@ test('ponto de equilíbrio de outubro: 7 pedidos e resultado R$ 350,20', () => {
   assert.equal(pedidosParaEquilibrio(26980, contribuicaoMedia), 7);
   assert.equal(resultadoDoPeriodo(62000, 26980), 35020);
 });
+
+import { lerPacote, filtrar, idsParaOcultar } from './mostruario.ts';
+
+test('pacote do mostruário: leitura, filtro por tamanho e ocultação', () => {
+  const pacote = JSON.stringify({
+    formato: 'craft-notes-unique/mostruario',
+    versao: 1,
+    modelos: [
+      { id: 'm1', nome: 'Semanal', tamanhos: ['A5', 'A6'], ordem: 1, preview: 'data:image/jpeg;base64,AA' },
+      { id: 'm2', nome: 'Pautado', tamanhos: ['A4'], ordem: 0, preview: 'data:image/jpeg;base64,AA' },
+    ],
+    adesivos: [{ id: 'a1', nome: 'Flor', preview: 'data:image/png;base64,AA' }],
+  });
+  const itens = lerPacote(pacote).map((i) => ({ ...i, visivel: true }));
+  assert.equal(itens.length, 3);
+  assert.deepEqual(filtrar(itens, 'modelo', 'A5').map((i) => i.id), ['m1']);
+  assert.equal(filtrar(itens, 'adesivo', 'A5').length, 1);
+  assert.deepEqual(idsParaOcultar(['m1', 'm2', 'a1'], ['m1']), ['m2', 'a1']);
+  assert.throws(() => lerPacote('{"formato":"outro"}'), /não é um pacote/);
+  assert.throws(() => lerPacote('nada'), /JSON/);
+});

@@ -2,7 +2,7 @@ import { nuvem } from '../../dados/nuvem.ts';
 
 const ITENS: { texto: string; feito: boolean }[] = [
   { texto: 'App abre no tablet e na web, com o nome e a logomarca', feito: true },
-  { texto: 'Login com Google e conta na nuvem', feito: !!nuvem },
+  { texto: 'Login com GitHub e conta na nuvem', feito: !!nuvem },
   { texto: 'Banco local no aparelho (funciona sem internet)', feito: true },
   { texto: 'Tema claro e escuro e cores da marca', feito: true },
   { texto: 'Backup manual (exportar e importar arquivo)', feito: true },

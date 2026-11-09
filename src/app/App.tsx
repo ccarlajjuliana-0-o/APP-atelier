@@ -5,15 +5,17 @@ import { Inicio } from './modulos/Inicio.tsx';
 import { Aparencia } from './modulos/Aparencia.tsx';
 import { TesteCaneta } from './modulos/TesteCaneta.tsx';
 import { TesteFonte } from './modulos/TesteFonte.tsx';
+import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
 
-type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup';
+type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario';
 
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
   { id: 'caneta', nome: 'Teste da caneta' },
   { id: 'fonte', nome: 'Teste de fontes' },
+  { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'aparencia', nome: 'Aparência e marca' },
 ];
@@ -56,12 +58,13 @@ export function App() {
           </nav>
           <main className="conteudo">
             {modoLocal && (
-              <div className="aviso">Modo local: os dados ficam só neste aparelho. O login com Google e a nuvem entram quando o Supabase for configurado.</div>
+              <div className="aviso">Modo local: os dados ficam só neste aparelho. O login com GitHub e a nuvem entram quando o Supabase for configurado.</div>
             )}
             {tela === 'inicio' && <Inicio />}
             {tela === 'aparencia' && <Aparencia prefs={prefs} aoMudar={setPrefs} />}
             {tela === 'caneta' && <TesteCaneta />}
             {tela === 'fonte' && <TesteFonte />}
+            {tela === 'mostruario' && <Mostruario />}
             {tela === 'backup' && <Backup />}
           </main>
         </div>

@@ -11,7 +11,7 @@ O desenho completo está no documento de planejamento (seções 1 a 17).
 - Teste da caneta (S Pen), teste de envio de fontes TTF e OTF
 - Backup manual (exportar e restaurar arquivo)
 - Regras de negócio testadas (`src/dominio`): estoque, receita, preço, prazo e equilíbrio
-- Login com Google, quando o Supabase estiver configurado
+- Login com GitHub, quando o Supabase estiver configurado
 
 ## Estrutura
 
@@ -32,7 +32,7 @@ public/icons  ícones e logomarca
 3. O endereço fica em `https://SEU-USUARIO.github.io/NOME-DO-REPOSITORIO/`.
 4. No tablet, abra o endereço no Chrome e use "Instalar app" ou "Adicionar à tela inicial".
 
-## Supabase (login com Google e nuvem)
+## Supabase (login com GitHub e nuvem)
 
 Em Settings, Secrets and variables, Actions, aba Variables, crie `VITE_SUPABASE_URL` e
 `VITE_SUPABASE_ANON_KEY`. Sem elas o app funciona em modo local.

@@ -6,10 +6,10 @@ const chave = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const nuvem: SupabaseClient | null = url && chave ? createClient(url, chave) : null;
 
-export async function entrarComGoogle(): Promise<void> {
+export async function entrarComGitHub(): Promise<void> {
   if (!nuvem) return;
   await nuvem.auth.signInWithOAuth({
-    provider: 'google',
+    provider: 'github',
     options: { redirectTo: window.location.origin + window.location.pathname },
   });
 }

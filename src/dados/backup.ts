@@ -23,6 +23,9 @@ export async function exportarTudo(): Promise<Blob> {
   const escritas = await Promise.all(
     (await db.escritas.toArray()).map(async (e) => ({ ...e, imagem: await blobParaBase64(e.imagem) })),
   );
+  const mostruario = await Promise.all(
+    (await db.mostruario.toArray()).map(async (m) => ({ ...m, previa: await blobParaBase64(m.previa) })),
+  );
   const dados = {
     versao: 1,
     exportadoEm: new Date().toISOString(),
@@ -30,6 +33,7 @@ export async function exportarTudo(): Promise<Blob> {
     movimentacoes: await db.movimentacoes.toArray(),
     fontes,
     escritas,
+    mostruario,
   };
   return new Blob([JSON.stringify(dados)], { type: 'application/json' });
 }
@@ -43,11 +47,15 @@ export async function importarTudo(arquivo: File): Promise<void> {
   const escritas = await Promise.all(
     (dados.escritas ?? []).map(async (e: any) => ({ ...e, imagem: await base64ParaBlob(e.imagem) })),
   );
-  await db.transaction('rw', db.materiais, db.movimentacoes, db.fontes, db.escritas, async () => {
+  const mostruario = await Promise.all(
+    (dados.mostruario ?? []).map(async (m: any) => ({ ...m, previa: await base64ParaBlob(m.previa) })),
+  );
+  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario], async () => {
     await db.materiais.bulkPut(dados.materiais ?? []);
     await db.movimentacoes.bulkPut(dados.movimentacoes ?? []);
     await db.fontes.bulkPut(fontes);
     await db.escritas.bulkPut(escritas);
+    await db.mostruario.bulkPut(mostruario);
   });
 }
 
