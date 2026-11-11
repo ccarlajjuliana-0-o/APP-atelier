@@ -6,23 +6,25 @@ import { Aparencia } from './modulos/Aparencia.tsx';
 import { TesteCaneta } from './modulos/TesteCaneta.tsx';
 import { TesteFonte } from './modulos/TesteFonte.tsx';
 import { Materiais } from './modulos/Materiais.tsx';
+import { Produtos } from './modulos/Produtos.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
 
-type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais';
+type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos';
 
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
   { id: 'caneta', nome: 'Teste da caneta' },
   { id: 'fonte', nome: 'Teste de fontes' },
   { id: 'materiais', nome: 'Materiais' },
+  { id: 'produtos', nome: 'Produtos' },
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'aparencia', nome: 'Aparência e marca' },
 ];
 
-const EM_BREVE = ['Produtos', 'Pedidos', 'Clientes', 'Financeiro', 'Equipamentos', 'Divulgação', 'Assistente'];
+const EM_BREVE = ['Pedidos', 'Clientes', 'Financeiro', 'Equipamentos', 'Divulgação', 'Assistente'];
 
 export function App() {
   const [prefs, setPrefs] = useTema();
@@ -67,6 +69,7 @@ export function App() {
             {tela === 'caneta' && <TesteCaneta />}
             {tela === 'fonte' && <TesteFonte />}
             {tela === 'materiais' && <Materiais />}
+            {tela === 'produtos' && <Produtos />}
             {tela === 'mostruario' && <Mostruario />}
             {tela === 'backup' && <Backup />}
           </main>

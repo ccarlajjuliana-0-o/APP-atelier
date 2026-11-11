@@ -159,3 +159,30 @@ test('materiais: compra em resma, custo médio e formatação', () => {
   assert.equal(formatarQuantidade(1, 'folha'), '1 folha');
   assert.equal(formatarQuantidade(1250, 'g'), '1.250 g');
 });
+
+import { resumoProduto, qtdEfetiva } from './produtos.ts';
+
+test('produtos: custo e quantos dá para produzir', () => {
+  const mats = {
+    offset: { nome: 'Offset', custoMicro: 72_000, disponivel: 590 }, // R$ 0,072/folha
+    wire: { nome: 'Wire-o', custoMicro: 800_000, disponivel: 30 },
+    canto: { nome: 'Cantoneira', custoMicro: 0, disponivel: 0 },
+  };
+  const itens = [
+    { materialId: 'offset', quantidade: 42, desperdicioPct: 0, extra: false },
+    { materialId: 'wire', quantidade: 1, desperdicioPct: 0, extra: false },
+    { materialId: 'canto', quantidade: 4, desperdicioPct: 0, extra: true },
+  ];
+  const r = resumoProduto(itens, mats);
+  assert.equal(r.quantidade, 14); // 590 / 42 = 14,04
+  assert.equal(r.limitante, 'offset');
+  assert.deepEqual(r.extrasEmFalta, ['canto']);
+  assert.deepEqual(r.semCusto, ['canto']);
+  assert.equal(r.custoCentavos, 382); // 42*0,072 + 0,80 = 3,824 → 382 centavos
+  // desperdício específico: 10% a mais de papel
+  assert.equal(qtdEfetiva({ ...itens[0], desperdicioPct: 10 }), 46.2);
+  // receita só com extras não tem limite
+  assert.equal(resumoProduto([itens[2]], mats).quantidade, null);
+  // quantidade zero ou material desconhecido é ignorado
+  assert.equal(resumoProduto([{ materialId: 'x', quantidade: 1, desperdicioPct: 0, extra: false }], mats).linhas.length, 0);
+});

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Material, MovimentacaoRegistro } from '../../dados/db.ts';
 import { novoId } from '../../dados/db.ts';
 import {
@@ -31,6 +31,7 @@ export function Materiais() {
   const [arquivados, setArquivados] = useState(false);
   const [painel, setPainel] = useState<Painel>(null);
   const [msg, setMsg] = useState('');
+  const painelRef = useRef<HTMLDivElement | null>(null);
 
   async function recarregar() {
     setLista(await listarMateriais());
@@ -53,6 +54,10 @@ export function Materiais() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [lista, saldo, filtro, arquivados],
   );
+  useEffect(() => {
+    if (painel) painelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [painel]);
+
   const qtdRepor = lista.filter(repor).length;
   const selecionado = painel && 'id' in painel ? lista.find((m) => m.id === painel.id) : undefined;
 
@@ -89,6 +94,7 @@ export function Materiais() {
       </div>
 
       {painel && (
+        <div ref={painelRef}>
         <Formulario
           key={painel.tipo + ('id' in painel ? painel.id : '')}
           painel={painel}
@@ -100,6 +106,7 @@ export function Materiais() {
             await recarregar();
           }}
         />
+        </div>
       )}
 
       {lista.length === 0 ? (

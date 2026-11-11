@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Movimentacao } from '../dominio/estoque.ts';
 import type { Categoria, Unidade } from '../dominio/materiais.ts';
+import type { ItemProduto, Linha, Perfil3D } from '../dominio/produtos.ts';
 
 export interface Material {
   id: string;
@@ -55,12 +56,26 @@ export interface MostruarioRegistro {
   atualizadoEm: string;
 }
 
+export interface Produto {
+  id: string;
+  nome: string;
+  linha: Linha;
+  categoria: string;
+  tempoTrabalhoMin: number;
+  precoCentavos: number | null; // preço de venda atual (o sugerido vem na precificação)
+  receita: ItemProduto[];
+  perfil3d: Perfil3D | null;
+  ativo: boolean;
+  atualizadoEm: string;
+}
+
 class BancoAtelie extends Dexie {
   materiais!: Table<Material, string>;
   movimentacoes!: Table<MovimentacaoRegistro, string>;
   fontes!: Table<FonteRegistro, string>;
   escritas!: Table<TracoRegistro, string>;
   mostruario!: Table<MostruarioRegistro, string>;
+  produtos!: Table<Produto, string>;
 
   constructor() {
     super('craft-notes-atelie');
@@ -72,6 +87,7 @@ class BancoAtelie extends Dexie {
     });
     this.version(2).stores({ mostruario: 'id, tipo, ordem' });
     this.version(3).stores({ materiais: 'id, nome, categoria' });
+    this.version(4).stores({ produtos: 'id, nome, linha' });
   }
 }
 

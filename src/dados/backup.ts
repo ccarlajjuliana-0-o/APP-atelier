@@ -34,6 +34,7 @@ export async function exportarTudo(): Promise<Blob> {
     fontes,
     escritas,
     mostruario,
+    produtos: await db.produtos.toArray(),
   };
   return new Blob([JSON.stringify(dados)], { type: 'application/json' });
 }
@@ -50,12 +51,13 @@ export async function importarTudo(arquivo: File): Promise<void> {
   const mostruario = await Promise.all(
     (dados.mostruario ?? []).map(async (m: any) => ({ ...m, previa: await base64ParaBlob(m.previa) })),
   );
-  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario], async () => {
+  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos], async () => {
     await db.materiais.bulkPut(dados.materiais ?? []);
     await db.movimentacoes.bulkPut(dados.movimentacoes ?? []);
     await db.fontes.bulkPut(fontes);
     await db.escritas.bulkPut(escritas);
     await db.mostruario.bulkPut(mostruario);
+    await db.produtos.bulkPut(dados.produtos ?? []);
   });
 }
 
