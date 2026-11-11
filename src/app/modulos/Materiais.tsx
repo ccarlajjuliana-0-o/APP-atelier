@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Material, MovimentacaoRegistro } from '../../dados/db.ts';
 import { novoId } from '../../dados/db.ts';
 import {
-  ajustarSaldo, carregarListaInicial, historico, listarMateriais, registrarCompra, salvarMaterial, saldos, type Saldo,
+  ajustarSaldo, carregarListaInicial, historico, listarMateriais, registrarCompra, salvarMaterial, saldos, ultimasCompras,
+  type Saldo, type UltimaCompra,
 } from '../../dados/materiais.ts';
+import { listarFornecedores } from '../../dados/fornecedores.ts';
+import { CampoFotos, Miniatura } from '../componentes/Fotos.tsx';
 import { abaixoDoMinimo, converterCompra } from '../../dominio/estoque.ts';
 import {
   CATEGORIAS, UNIDADES, formatarQuantidade, lerNumero, microParaTexto, type Categoria, type Unidade,
@@ -31,11 +34,15 @@ export function Materiais() {
   const [arquivados, setArquivados] = useState(false);
   const [painel, setPainel] = useState<Painel>(null);
   const [msg, setMsg] = useState('');
+  const [ultimas, setUltimas] = useState<Record<string, UltimaCompra>>({});
+  const [fornecedores, setFornecedores] = useState<string[]>([]);
   const painelRef = useRef<HTMLDivElement | null>(null);
 
   async function recarregar() {
     setLista(await listarMateriais());
     setSaldo(await saldos());
+    setUltimas(await ultimasCompras());
+    setFornecedores((await listarFornecedores()).filter((f) => f.ativo).map((f) => f.nome));
   }
   useEffect(() => {
     void recarregar();
@@ -99,6 +106,7 @@ export function Materiais() {
           key={painel.tipo + ('id' in painel ? painel.id : '')}
           painel={painel}
           material={selecionado}
+          fornecedores={fornecedores}
           fechar={() => setPainel(null)}
           aoSalvar={async (texto) => {
             setMsg(texto);
@@ -115,15 +123,20 @@ export function Materiais() {
         <div className="cartao" style={{ padding: 0, overflowX: 'auto' }}>
           <table className="tabela">
             <thead>
-              <tr><th>Material</th><th>Disponível</th><th>Mínimo</th><th>Custo médio</th><th /></tr>
+              <tr><th>Material</th><th>Disponível</th><th>Mínimo</th><th>Custo médio</th><th>Última compra</th><th /></tr>
             </thead>
             <tbody>
               {visiveis.map((m) => (
                 <tr key={m.id}>
                   <td>
-                    <strong>{m.nome}</strong>
-                    <div className="suave" style={{ fontSize: 13 }}>
-                      {CATEGORIAS[m.categoria]}{m.essencial ? ' · essencial' : ''}
+                    <div className="linha" style={{ flexWrap: 'nowrap' }}>
+                      <Miniatura foto={m.foto} />
+                      <div>
+                        <strong>{m.nome}</strong>
+                        <div className="suave" style={{ fontSize: 13 }}>
+                          {CATEGORIAS[m.categoria]}{m.essencial ? ' · essencial' : ''}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td>
@@ -132,6 +145,16 @@ export function Materiais() {
                   </td>
                   <td>{m.minimo ? formatarQuantidade(m.minimo, m.unidade) : '—'}</td>
                   <td>{m.custoMedioMicro ? `${microParaTexto(m.custoMedioMicro)} / ${UNIDADES[m.unidade].singular}` : 'sem custo ainda'}</td>
+                  <td>
+                    {ultimas[m.id] ? (
+                      <>
+                        {centavosParaTexto(ultimas[m.id].valorCentavos)}
+                        <div className="suave" style={{ fontSize: 12 }}>
+                          {new Date(ultimas[m.id].data).toLocaleDateString('pt-BR')}{ultimas[m.id].fornecedor ? ` · ${ultimas[m.id].fornecedor}` : ''}
+                        </div>
+                      </>
+                    ) : '—'}
+                  </td>
                   <td>
                     <div className="linha" style={{ justifyContent: 'flex-end' }}>
                       <button className="btn" onClick={() => setPainel({ tipo: 'compra', id: m.id })}>Comprar</button>
@@ -143,7 +166,7 @@ export function Materiais() {
                 </tr>
               ))}
               {visiveis.length === 0 && (
-                <tr><td colSpan={5} className="suave">Nada nesta lista.</td></tr>
+                <tr><td colSpan={6} className="suave">Nada nesta lista.</td></tr>
               )}
             </tbody>
           </table>
@@ -165,16 +188,17 @@ function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 function Formulario(props: {
   painel: NonNullable<Painel>;
   material?: Material;
+  fornecedores: string[];
   fechar: () => void;
   aoSalvar: (msg: string) => Promise<void>;
 }) {
-  const { painel, material, fechar, aoSalvar } = props;
+  const { painel, material, fornecedores, fechar, aoSalvar } = props;
 
   if (painel.tipo === 'novo' || painel.tipo === 'editar') {
     return <FormMaterial inicial={material ?? { ...VAZIO }} novo={painel.tipo === 'novo'} fechar={fechar} aoSalvar={aoSalvar} />;
   }
   if (!material) return null;
-  if (painel.tipo === 'compra') return <FormCompra m={material} fechar={fechar} aoSalvar={aoSalvar} />;
+  if (painel.tipo === 'compra') return <FormCompra m={material} fornecedores={fornecedores} fechar={fechar} aoSalvar={aoSalvar} />;
   if (painel.tipo === 'ajuste') return <FormAjuste m={material} fechar={fechar} aoSalvar={aoSalvar} />;
   return <Historico m={material} fechar={fechar} />;
 }
@@ -226,6 +250,9 @@ function FormMaterial(p: { inicial: Material; novo: boolean; fechar: () => void;
           <input type="text" inputMode="decimal" value={qtd} onChange={(e) => setQtd(e.target.value)} />
         </Campo>
       </div>
+      <div style={{ marginTop: 12 }}>
+        <CampoFotos fotos={m.foto ? [m.foto] : []} max={1} rotulo="Foto do material" aoMudar={(f) => setM({ ...m, foto: f[0] ?? null })} />
+      </div>
       <label className="linha" style={{ marginTop: 10 }}>
         <input type="checkbox" checked={m.essencial} onChange={(e) => setM({ ...m, essencial: e.target.checked })} />
         Essencial: sem ele, o produto não pode ser feito
@@ -240,7 +267,7 @@ function FormMaterial(p: { inicial: Material; novo: boolean; fechar: () => void;
   );
 }
 
-function FormCompra(p: { m: Material; fechar: () => void; aoSalvar: (m: string) => Promise<void> }) {
+function FormCompra(p: { m: Material; fornecedores: string[]; fechar: () => void; aoSalvar: (m: string) => Promise<void> }) {
   const { m } = p;
   const [emb, setEmb] = useState('1');
   const [porEmb, setPorEmb] = useState(String(m.embalagemQtd));
@@ -265,7 +292,10 @@ function FormCompra(p: { m: Material; fechar: () => void; aoSalvar: (m: string) 
         <Campo rotulo={`Quantas ${m.embalagemNome || 'embalagens'}?`}><input type="text" inputMode="decimal" value={emb} onChange={(e) => setEmb(e.target.value)} /></Campo>
         <Campo rotulo={`${UNIDADES[m.unidade].plural} por ${m.embalagemNome || 'embalagem'}`}><input type="text" inputMode="decimal" value={porEmb} onChange={(e) => setPorEmb(e.target.value)} /></Campo>
         <Campo rotulo="Valor total pago (R$)"><input type="text" inputMode="decimal" placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} /></Campo>
-        <Campo rotulo="Fornecedor (opcional)"><input type="text" value={forn} onChange={(e) => setForn(e.target.value)} /></Campo>
+        <Campo rotulo="Fornecedor (opcional)">
+          <input type="text" list="lista-fornecedores" value={forn} onChange={(e) => setForn(e.target.value)} />
+          <datalist id="lista-fornecedores">{p.fornecedores.map((f) => <option key={f} value={f} />)}</datalist>
+        </Campo>
       </div>
       {prev && (
         <p className="suave">

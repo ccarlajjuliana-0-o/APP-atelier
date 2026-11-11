@@ -13,6 +13,7 @@ export interface Material {
   embalagemNome: string; // resma, rolo, pacote...
   embalagemQtd: number; // unidades de estoque por embalagem
   custoMedioMicro: number; // 0 = ainda sem custo (nasce da primeira compra)
+  foto?: Blob | null;
   ativo: boolean;
   atualizadoEm: string;
 }
@@ -56,6 +57,18 @@ export interface MostruarioRegistro {
   atualizadoEm: string;
 }
 
+export interface Fornecedor {
+  id: string;
+  nome: string;
+  contato: string; // telefone ou WhatsApp
+  email: string;
+  link: string; // site ou loja online
+  categorias: string[]; // o que vende (categorias de material)
+  observacoes: string;
+  ativo: boolean;
+  atualizadoEm: string;
+}
+
 export interface Produto {
   id: string;
   nome: string;
@@ -65,6 +78,7 @@ export interface Produto {
   precoCentavos: number | null; // preço de venda atual (o sugerido vem na precificação)
   receita: ItemProduto[];
   perfil3d: Perfil3D | null;
+  fotos?: Blob[];
   ativo: boolean;
   atualizadoEm: string;
 }
@@ -76,6 +90,7 @@ class BancoAtelie extends Dexie {
   escritas!: Table<TracoRegistro, string>;
   mostruario!: Table<MostruarioRegistro, string>;
   produtos!: Table<Produto, string>;
+  fornecedores!: Table<Fornecedor, string>;
 
   constructor() {
     super('craft-notes-atelie');
@@ -88,6 +103,7 @@ class BancoAtelie extends Dexie {
     this.version(2).stores({ mostruario: 'id, tipo, ordem' });
     this.version(3).stores({ materiais: 'id, nome, categoria' });
     this.version(4).stores({ produtos: 'id, nome, linha' });
+    this.version(5).stores({ fornecedores: 'id, nome' });
   }
 }
 

@@ -6,12 +6,13 @@ import { Aparencia } from './modulos/Aparencia.tsx';
 import { TesteCaneta } from './modulos/TesteCaneta.tsx';
 import { TesteFonte } from './modulos/TesteFonte.tsx';
 import { Materiais } from './modulos/Materiais.tsx';
+import { Fornecedores } from './modulos/Fornecedores.tsx';
 import { Produtos } from './modulos/Produtos.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
 
-type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos';
+type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores';
 
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
@@ -19,6 +20,7 @@ const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'fonte', nome: 'Teste de fontes' },
   { id: 'materiais', nome: 'Materiais' },
   { id: 'produtos', nome: 'Produtos' },
+  { id: 'fornecedores', nome: 'Fornecedores' },
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'aparencia', nome: 'Aparência e marca' },
@@ -70,6 +72,7 @@ export function App() {
             {tela === 'fonte' && <TesteFonte />}
             {tela === 'materiais' && <Materiais />}
             {tela === 'produtos' && <Produtos />}
+            {tela === 'fornecedores' && <Fornecedores />}
             {tela === 'mostruario' && <Mostruario />}
             {tela === 'backup' && <Backup />}
           </main>

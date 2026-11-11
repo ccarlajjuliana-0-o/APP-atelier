@@ -186,3 +186,23 @@ test('produtos: custo e quantos dá para produzir', () => {
   // quantidade zero ou material desconhecido é ignorado
   assert.equal(resumoProduto([{ materialId: 'x', quantidade: 1, desperdicioPct: 0, extra: false }], mats).linhas.length, 0);
 });
+
+import { escalaMax } from './imagem.ts';
+import { resumirFornecedor } from './fornecedores.ts';
+
+test('fotos e fornecedores', () => {
+  assert.deepEqual(escalaMax(4000, 3000, 900), { w: 900, h: 675 });
+  assert.deepEqual(escalaMax(600, 800, 900), { w: 600, h: 800 });
+  assert.deepEqual(escalaMax(1000, 5000, 900), { w: 180, h: 900 });
+  const compras = [
+    { fornecedor: 'Papelaria Aurora', valorTotalCentavos: 3600, criadoEm: '2026-11-01T10:00:00Z' },
+    { fornecedor: ' papelaria aurora ', valorTotalCentavos: 2500, criadoEm: '2026-11-10T10:00:00Z' },
+    { fornecedor: 'Outra', valorTotalCentavos: 999, criadoEm: '2026-11-11T10:00:00Z' },
+    { criadoEm: '2026-11-12T10:00:00Z' },
+  ];
+  const r = resumirFornecedor(compras, 'Papelaria Aurora');
+  assert.equal(r.compras, 2);
+  assert.equal(r.totalCentavos, 6100);
+  assert.equal(r.ultima, '2026-11-10T10:00:00Z');
+  assert.equal(resumirFornecedor(compras, 'Ninguém').ultima, null);
+});

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Material, Produto } from '../../dados/db.ts';
 import { listarMateriais, saldos } from '../../dados/materiais.ts';
+import { CampoFotos, Miniatura } from '../componentes/Fotos.tsx';
 import { duplicarProduto, listarProdutos, salvarProduto } from '../../dados/produtos.ts';
 import { CATEGORIAS, UNIDADES, lerNumero, microParaTexto } from '../../dominio/materiais.ts';
 import { centavosParaTexto } from '../../dominio/dinheiro.ts';
@@ -106,8 +107,13 @@ export function Produtos() {
               {linhas.map(({ p, r }) => (
                 <tr key={p.id}>
                   <td>
-                    <strong>{p.nome}</strong>
-                    <div className="suave" style={{ fontSize: 13 }}>{LINHAS[p.linha]}{p.categoria ? ` · ${p.categoria}` : ''}</div>
+                    <div className="linha" style={{ flexWrap: 'nowrap' }}>
+                      <Miniatura foto={p.fotos?.[0]} />
+                      <div>
+                        <strong>{p.nome}</strong>
+                        <div className="suave" style={{ fontSize: 13 }}>{LINHAS[p.linha]}{p.categoria ? ` · ${p.categoria}` : ''}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>{p.precoCentavos !== null ? centavosParaTexto(p.precoCentavos) : '—'}</td>
                   <td>
@@ -173,6 +179,7 @@ function FormProduto(p: {
     p.inicial.receita.map((i) => ({ materialId: i.materialId, quantidade: String(i.quantidade).replace('.', ','), desperdicio: i.desperdicioPct ? String(i.desperdicioPct).replace('.', ',') : '', extra: i.extra })),
   );
   const [perfil, setPerfil] = useState<Perfil3D>(p.inicial.perfil3d ?? PERFIL_PADRAO);
+  const [fotos, setFotos] = useState<Blob[]>(p.inicial.fotos ?? []);
   const [erro, setErro] = useState('');
 
   const porId = Object.fromEntries(p.materiais.map((m) => [m.id, m]));
@@ -209,6 +216,7 @@ function FormProduto(p: {
       precoCentavos: pc === null ? null : Math.round(pc * 100),
       receita: itensNum,
       perfil3d: linha === 'impressao3d' ? perfil : null,
+      fotos,
       ativo: arquivar === undefined ? p.inicial.ativo !== false : !arquivar,
     });
     await p.aoSalvar(arquivar === true ? `“${salvo.nome}” arquivado.` : arquivar === false ? `“${salvo.nome}” voltou para a lista.` : `“${salvo.nome}” salvo.`);
@@ -227,6 +235,10 @@ function FormProduto(p: {
         <Campo rotulo="Categoria (planner, caderno, marcador…)"><input type="text" value={categoria} onChange={(e) => setCategoria(e.target.value)} /></Campo>
         <Campo rotulo="Tempo de trabalho (min)"><input type="text" inputMode="decimal" value={tempo} onChange={(e) => setTempo(e.target.value)} /></Campo>
         <Campo rotulo="Preço de venda atual (R$, opcional)"><input type="text" inputMode="decimal" placeholder="0,00" value={preco} onChange={(e) => setPreco(e.target.value)} /></Campo>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <CampoFotos fotos={fotos} max={4} rotulo="Fotos do produto (até 4)" aoMudar={setFotos} />
       </div>
 
       <h2 style={{ marginTop: 18 }}>Receita (por unidade)</h2>

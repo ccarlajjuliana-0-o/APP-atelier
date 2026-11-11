@@ -8,6 +8,8 @@ body {
   color: var(--texto);
 }
 button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--principal); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
 button { cursor: pointer; }
 
 .app { display: flex; height: 100%; }

@@ -77,3 +77,19 @@ export async function historico(materialId: string, limite = 12): Promise<Movime
   const movs = await db.movimentacoes.where('materialId').equals(materialId).toArray();
   return movs.sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)).slice(0, limite);
 }
+
+export interface UltimaCompra {
+  data: string;
+  valorCentavos: number;
+  fornecedor?: string;
+}
+
+export async function ultimasCompras(): Promise<Record<string, UltimaCompra>> {
+  const entradas = (await db.movimentacoes.toArray()).filter((m) => m.tipo === 'entrada' && m.valorTotalCentavos !== undefined);
+  const out: Record<string, UltimaCompra> = {};
+  for (const m of entradas) {
+    const atual = out[m.materialId];
+    if (!atual || m.criadoEm > atual.data) out[m.materialId] = { data: m.criadoEm, valorCentavos: m.valorTotalCentavos ?? 0, fornecedor: m.fornecedor };
+  }
+  return out;
+}

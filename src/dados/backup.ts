@@ -26,15 +26,22 @@ export async function exportarTudo(): Promise<Blob> {
   const mostruario = await Promise.all(
     (await db.mostruario.toArray()).map(async (m) => ({ ...m, previa: await blobParaBase64(m.previa) })),
   );
+  const materiais = await Promise.all(
+    (await db.materiais.toArray()).map(async (m) => ({ ...m, foto: m.foto ? await blobParaBase64(m.foto) : null })),
+  );
+  const produtos = await Promise.all(
+    (await db.produtos.toArray()).map(async (p) => ({ ...p, fotos: await Promise.all((p.fotos ?? []).map(blobParaBase64)) })),
+  );
   const dados = {
     versao: 1,
     exportadoEm: new Date().toISOString(),
-    materiais: await db.materiais.toArray(),
+    materiais,
     movimentacoes: await db.movimentacoes.toArray(),
     fontes,
     escritas,
     mostruario,
-    produtos: await db.produtos.toArray(),
+    produtos,
+    fornecedores: await db.fornecedores.toArray(),
   };
   return new Blob([JSON.stringify(dados)], { type: 'application/json' });
 }
@@ -51,13 +58,20 @@ export async function importarTudo(arquivo: File): Promise<void> {
   const mostruario = await Promise.all(
     (dados.mostruario ?? []).map(async (m: any) => ({ ...m, previa: await base64ParaBlob(m.previa) })),
   );
-  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos], async () => {
-    await db.materiais.bulkPut(dados.materiais ?? []);
+  const materiais = await Promise.all(
+    (dados.materiais ?? []).map(async (m: any) => ({ ...m, foto: m.foto ? await base64ParaBlob(m.foto) : null })),
+  );
+  const produtos = await Promise.all(
+    (dados.produtos ?? []).map(async (p: any) => ({ ...p, fotos: await Promise.all((p.fotos ?? []).map(base64ParaBlob)) })),
+  );
+  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos, db.fornecedores], async () => {
+    await db.materiais.bulkPut(materiais);
     await db.movimentacoes.bulkPut(dados.movimentacoes ?? []);
     await db.fontes.bulkPut(fontes);
     await db.escritas.bulkPut(escritas);
     await db.mostruario.bulkPut(mostruario);
-    await db.produtos.bulkPut(dados.produtos ?? []);
+    await db.produtos.bulkPut(produtos);
+    await db.fornecedores.bulkPut(dados.fornecedores ?? []);
   });
 }
 
