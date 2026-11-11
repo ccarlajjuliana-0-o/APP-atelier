@@ -1,13 +1,18 @@
 import Dexie, { type Table } from 'dexie';
 import type { Movimentacao } from '../dominio/estoque.ts';
+import type { Categoria, Unidade } from '../dominio/materiais.ts';
 
 export interface Material {
   id: string;
   nome: string;
-  unidade: 'folha' | 'g' | 'un';
+  categoria: Categoria;
+  unidade: Unidade;
   essencial: boolean;
   minimo: number;
-  custoMedioMicro: number;
+  embalagemNome: string; // resma, rolo, pacote...
+  embalagemQtd: number; // unidades de estoque por embalagem
+  custoMedioMicro: number; // 0 = ainda sem custo (nasce da primeira compra)
+  ativo: boolean;
   atualizadoEm: string;
 }
 
@@ -15,6 +20,9 @@ export interface MovimentacaoRegistro extends Movimentacao {
   id: string;
   criadoEm: string;
   observacao?: string;
+  custoUnitMicro?: number; // só em compras
+  valorTotalCentavos?: number;
+  fornecedor?: string;
 }
 
 export interface FonteRegistro {
@@ -63,6 +71,7 @@ class BancoAtelie extends Dexie {
       escritas: 'id, criadoEm',
     });
     this.version(2).stores({ mostruario: 'id, tipo, ordem' });
+    this.version(3).stores({ materiais: 'id, nome, categoria' });
   }
 }
 

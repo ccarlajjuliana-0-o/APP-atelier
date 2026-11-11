@@ -123,3 +123,39 @@ test('pacote do mostruário: leitura, filtro por tamanho e ocultação', () => {
   assert.throws(() => lerPacote('{"formato":"outro"}'), /não é um pacote/);
   assert.throws(() => lerPacote('nada'), /JSON/);
 });
+
+import { MATERIAIS_INICIAIS, lerNumero, custoAposCompra, formatarQuantidade, microParaTexto, UNIDADES, CATEGORIAS } from './materiais.ts';
+
+test('materiais: lista inicial consistente', () => {
+  const nomes = MATERIAIS_INICIAIS.map((x) => x.nome.toLowerCase());
+  assert.equal(new Set(nomes).size, nomes.length);
+  for (const x of MATERIAIS_INICIAIS) {
+    assert.ok(x.unidade in UNIDADES, x.nome);
+    assert.ok(x.categoria in CATEGORIAS, x.nome);
+    assert.ok(x.embalagemQtd > 0 && x.minimo >= 0, x.nome);
+  }
+});
+
+test('materiais: leitura de números em português', () => {
+  assert.equal(lerNumero('12,50'), 12.5);
+  assert.equal(lerNumero('1.250,5'), 1250.5);
+  assert.equal(lerNumero('1.250'), 1250);
+  assert.equal(lerNumero('12.5'), 12.5);
+  assert.equal(lerNumero(' 7 '), 7);
+  assert.ok(Number.isNaN(lerNumero('abc')));
+  assert.ok(Number.isNaN(lerNumero('')));
+});
+
+test('materiais: compra em resma, custo médio e formatação', () => {
+  // 2 resmas de 500 folhas por R$ 52,00 => 1000 folhas a R$ 0,052
+  const c = converterCompra(2, 500, 5200);
+  assert.equal(c.quantidade, 1000);
+  assert.equal(c.custoUnitMicro, 52_000);
+  // custo desconhecido: vale o custo da compra
+  assert.equal(custoAposCompra(300, 0, 1000, 52_000), 52_000);
+  // custo conhecido: média ponderada (500 a 40.000 + 500 a 60.000 = 50.000)
+  assert.equal(custoAposCompra(500, 40_000, 500, 60_000), 50_000);
+  assert.equal(microParaTexto(52_000), 'R$ 0,0520');
+  assert.equal(formatarQuantidade(1, 'folha'), '1 folha');
+  assert.equal(formatarQuantidade(1250, 'g'), '1.250 g');
+});

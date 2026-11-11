@@ -33,7 +33,7 @@ export function Mostruario() {
     if (!arquivo) return;
     try {
       const r = await importarPacote(arquivo);
-      setMsg(`${r.total} itens importados${r.nuvem ? ' e enviados à nuvem' : ' (só neste aparelho; a nuvem entra com o login)'}.`);
+      setMsg(`${r.total} ${r.total === 1 ? 'item importado' : 'itens importados'}${r.nuvem ? ' e enviados à nuvem' : ' (só neste aparelho; a nuvem entra com o login)'}.`);
       await recarregar();
     } catch (x) {
       setErro(x instanceof Error ? x.message : 'Não consegui importar este arquivo.');
