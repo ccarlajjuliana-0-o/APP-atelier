@@ -1,0 +1,1 @@
+export type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores' | 'pedidos' | 'clientes' | 'financeiro' | 'equipamentos' | 'divulgacao' | 'nuvem';

@@ -12,6 +12,7 @@ export interface PedidoResumo {
 }
 export interface SnapshotAssistente {
   hoje: string;
+  tela?: string; // tela aberta no app quando a pergunta foi feita
   materiais: MaterialResumo[];
   produtos: ProdutoResumo[];
   pedidos: PedidoResumo[]; // só abertos
@@ -32,7 +33,9 @@ export function primeiroNome(nome: string): string {
 
 /** Texto compacto com o estado do ateliê. Valores já em reais, para a IA não precisar converter. */
 export function montarContexto(s: SnapshotAssistente): string {
-  const out: string[] = [`Hoje: ${s.hoje}`, ''];
+  const out: string[] = [`Hoje: ${s.hoje}`];
+  if (s.tela) out.push(`Tela aberta no app agora: ${s.tela} (a pergunta pode se referir ao que ela mostra)`);
+  out.push('');
 
   out.push('PRECIFICAÇÃO (ajustes do app)');
   out.push(`- multiplicador encadernação: ${s.ajustes.multiplicadorEncadernacao ?? 'não definido'}; multiplicador 3D: ${s.ajustes.multiplicador3d ?? 'não definido'}; kWh: ${s.ajustes.kwhCentavos > 0 ? centavosParaTexto(s.ajustes.kwhCentavos) : 'não definido'}`);

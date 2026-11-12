@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { PREFERENCIAS_PADRAO, variaveis, type Preferencias } from './tema.ts';
+import { FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PREFERENCIAS_PADRAO, achar, urlDasFontes, variaveis, type Preferencias } from './tema.ts';
+import { carregarFontes } from './fontes.ts';
 
 const CHAVE = 'craft-notes:tema';
 
@@ -29,6 +30,7 @@ export function useTema(): [Preferencias, (p: Preferencias) => void] {
   useEffect(() => {
     const v = variaveis(prefs, sistemaEscuro);
     for (const [k, val] of Object.entries(v)) document.documentElement.style.setProperty(k, val);
+    carregarFontes('tema', urlDasFontes([achar(FONTES_CORPO, prefs.fonteCorpo), achar(FONTES_TITULO, prefs.fonteTitulo), achar(FONTES_SCRIPT, prefs.fonteScript)]));
     try {
       localStorage.setItem(CHAVE, JSON.stringify(prefs));
     } catch {

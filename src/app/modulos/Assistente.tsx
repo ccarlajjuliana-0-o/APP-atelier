@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { nuvem } from '../../dados/nuvem.ts';
 import { perguntar } from '../../dados/assistente.ts';
 import { PERGUNTAS_SUGERIDAS, type Mensagem } from '../../dominio/assistente.ts';
 
@@ -14,25 +13,30 @@ function Texto({ t }: { t: string }) {
   );
 }
 
-export function Assistente() {
+/**
+ * Assistente em botão flutuante: fica por cima de qualquer tela, sem tirar você do que está fazendo.
+ * Vive no App (nunca desmonta), então a conversa continua ao trocar de tela.
+ */
+export function AssistenteFlutuante({ telaAtual }: { telaAtual: string }) {
+  const [aberto, setAberto] = useState(false);
   const [conversa, setConversa] = useState<Mensagem[]>([]);
   const [texto, setTexto] = useState('');
   const [pensando, setPensando] = useState(false);
   const [erro, setErro] = useState('');
   const fim = useRef<HTMLDivElement | null>(null);
+  const campo = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    fim.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [conversa.length, pensando]);
+    if (aberto) fim.current?.scrollIntoView({ block: 'end' });
+  }, [aberto, conversa.length, pensando]);
 
-  if (!nuvem) {
-    return (
-      <>
-        <h1>Assistente</h1>
-        <div className="aviso">O assistente usa a nuvem (Supabase) para guardar a chave da IA com segurança. Entre com o GitHub para usar.</div>
-      </>
-    );
-  }
+  useEffect(() => {
+    if (!aberto) return;
+    campo.current?.focus();
+    const fechar = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
+    window.addEventListener('keydown', fechar);
+    return () => window.removeEventListener('keydown', fechar);
+  }, [aberto]);
 
   async function enviar(pergunta: string) {
     const p = pergunta.trim();
@@ -43,7 +47,7 @@ export function Assistente() {
     setErro('');
     setPensando(true);
     try {
-      const r = await perguntar(nova);
+      const r = await perguntar(nova, telaAtual);
       setConversa([...nova, { role: 'assistant', content: r }]);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Algo deu errado.');
@@ -52,40 +56,46 @@ export function Assistente() {
     }
   }
 
-  return (
-    <>
-      <h1>Assistente</h1>
-      <p className="suave">
-        Pergunte sobre estoque, pedidos, preços, caixa e divulgação. Ele só aconselha: não altera nada no app. Para responder, um resumo do ateliê (sem telefone e sem sobrenome de clientes) é enviado à IA.
-      </p>
-      <div className="faixa" />
+  if (!aberto) {
+    return (
+      <button className="fab" onClick={() => setAberto(true)} aria-label="Abrir o assistente">
+        <span aria-hidden="true">✨</span> Assistente
+      </button>
+    );
+  }
 
-      <div className="cartao">
+  return (
+    <div className="janela-assistente" role="dialog" aria-label="Assistente">
+      <header>
+        <strong>Assistente</strong>
+        {conversa.length > 0 && <button className="btn" style={{ minHeight: 36, padding: '0 12px' }} onClick={() => { setConversa([]); setErro(''); }}>Nova conversa</button>}
+        <button className="btn" style={{ minHeight: 36, padding: '0 12px' }} onClick={() => setAberto(false)} aria-label="Fechar o assistente">Fechar</button>
+      </header>
+      <div className="mensagens" aria-live="polite">
         {conversa.length === 0 && (
           <>
-            <p className="suave" style={{ marginTop: 0 }}>Por onde começar? 🌸</p>
+            <p className="suave" style={{ margin: 0 }}>
+              Pergunte sobre estoque, pedidos, preços, caixa e divulgação. Eu só aconselho, não altero nada. Um resumo do ateliê (sem telefone e sem sobrenome de clientes) é enviado à IA para responder. 🌸
+            </p>
             <div className="linha">
-              {PERGUNTAS_SUGERIDAS.map((q) => <button key={q} className="pilula" onClick={() => void enviar(q)}>{q}</button>)}
+              {PERGUNTAS_SUGERIDAS.map((q) => <button key={q} className="pilula" style={{ minHeight: 38, fontSize: 14 }} onClick={() => void enviar(q)}>{q}</button>)}
             </div>
           </>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} aria-live="polite">
-          {conversa.map((m, i) => (
-            <div key={i} style={{
-              alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', whiteSpace: 'pre-wrap', padding: '10px 14px', borderRadius: 16,
-              background: m.role === 'user' ? 'var(--principal)' : 'var(--neutro)', color: m.role === 'user' ? 'var(--sobre-principal)' : 'var(--texto)',
-            }}><Texto t={m.content} /></div>
-          ))}
-          {pensando && <div className="suave">Pensando…</div>}
-          <div ref={fim} />
-        </div>
-        {erro && <div className="aviso" role="alert" style={{ marginTop: 10 }}>{erro}</div>}
-        <form className="linha" style={{ marginTop: 12, flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); void enviar(texto); }}>
-          <input type="text" aria-label="Sua pergunta" placeholder="Pergunte algo sobre o ateliê…" style={{ flex: 1, minWidth: 0 }} value={texto} onChange={(e) => setTexto(e.target.value)} />
-          <button className="btn primario" type="submit" disabled={pensando || !texto.trim()}>Enviar</button>
-          {conversa.length > 0 && <button className="btn" type="button" onClick={() => { setConversa([]); setErro(''); }}>Nova conversa</button>}
-        </form>
+        {conversa.map((m, i) => (
+          <div key={i} style={{
+            alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', whiteSpace: 'pre-wrap', padding: '10px 14px', borderRadius: 16,
+            background: m.role === 'user' ? 'var(--principal)' : 'var(--neutro)', color: m.role === 'user' ? 'var(--sobre-principal)' : 'var(--texto)',
+          }}><Texto t={m.content} /></div>
+        ))}
+        {pensando && <div className="suave">Pensando…</div>}
+        {erro && <div className="aviso" role="alert">{erro}</div>}
+        <div ref={fim} />
       </div>
-    </>
+      <form onSubmit={(e) => { e.preventDefault(); void enviar(texto); }}>
+        <input ref={campo} type="text" aria-label="Sua pergunta" placeholder="Pergunte algo sobre o ateliê…" style={{ flex: 1, minWidth: 0 }} value={texto} onChange={(e) => setTexto(e.target.value)} />
+        <button className="btn primario" type="submit" disabled={pensando || !texto.trim()}>Enviar</button>
+      </form>
+    </div>
   );
 }

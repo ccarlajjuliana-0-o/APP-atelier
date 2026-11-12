@@ -47,3 +47,8 @@ test('conversa: mantém o fim, corta textos longos e começa pelo usuário', () 
   assert.equal(limitarMensagens([{ role: 'user', content: 'x'.repeat(9000) }])[0].content.length, 4000);
   assert.deepEqual(limitarMensagens([{ role: 'assistant', content: 'oi' }, { role: 'user', content: '  ' }]), []);
 });
+
+test('contexto informa a tela aberta, quando há', () => {
+  assert.ok(montarContexto({ ...base, tela: 'Pedidos' }).includes('Tela aberta no app agora: Pedidos'));
+  assert.ok(!montarContexto(base).includes('Tela aberta'));
+});
