@@ -13,13 +13,14 @@ import { Clientes } from './modulos/Clientes.tsx';
 import { Financeiro } from './modulos/Financeiro.tsx';
 import { Equipamentos } from './modulos/Equipamentos.tsx';
 import { Divulgacao } from './modulos/Divulgacao.tsx';
+import { Assistente } from './modulos/Assistente.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
 import { iniciarSincronizacaoAutomatica } from '../dados/sync.ts';
 import { Nuvem, EstadoNuvem } from './modulos/Nuvem.tsx';
 
-type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores' | 'pedidos' | 'clientes' | 'financeiro' | 'equipamentos' | 'divulgacao' | 'nuvem';
+type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores' | 'pedidos' | 'clientes' | 'financeiro' | 'equipamentos' | 'divulgacao' | 'assistente' | 'nuvem';
 
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
@@ -33,13 +34,14 @@ const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'financeiro', nome: 'Financeiro' },
   { id: 'equipamentos', nome: 'Equipamentos' },
   { id: 'divulgacao', nome: 'Divulgação' },
+  { id: 'assistente', nome: 'Assistente' },
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'nuvem', nome: 'Nuvem' },
   { id: 'aparencia', nome: 'Aparência e marca' },
 ];
 
-const EM_BREVE = ['Assistente'];
+const EM_BREVE: string[] = [];
 
 /** Liga a sincronização automática enquanto o app está aberto e logado. */
 function SincronizacaoAutomatica() {
@@ -99,6 +101,7 @@ export function App() {
             {tela === 'financeiro' && <Financeiro />}
             {tela === 'equipamentos' && <Equipamentos />}
             {tela === 'divulgacao' && <Divulgacao />}
+            {tela === 'assistente' && <Assistente />}
             {tela === 'mostruario' && <Mostruario />}
             {tela === 'backup' && <Backup />}
             {tela === 'nuvem' && <Nuvem />}
