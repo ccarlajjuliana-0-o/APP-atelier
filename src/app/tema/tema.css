@@ -23,6 +23,7 @@ button { cursor: pointer; }
 .menu {
   width: 232px; flex: none; background: var(--menu); color: var(--sobre-menu);
   display: flex; flex-direction: column; padding: 20px 14px; gap: 4px; overflow-y: auto;
+  background-image: var(--menu-camadas, none); background-size: var(--menu-tamanho, auto); background-repeat: var(--menu-repeticao, repeat); background-attachment: var(--menu-fixacao, scroll); background-position: center top;
 }
 .marca { display: flex; align-items: center; gap: 10px; padding: 0 4px 16px; }
 .marca img { width: 40px; height: 40px; border-radius: 14px; display: block; flex: none; object-fit: contain; }
@@ -38,7 +39,7 @@ button { cursor: pointer; }
 .menu .em-breve { margin-left: auto; font-size: 11px; opacity: 0.8; }
 .menu .espaco { flex: 1; }
 
-.conteudo { flex: 1; min-width: 0; padding: 28px 32px 110px; overflow-y: auto; background-color: var(--fundo); background-image: var(--fundo-camadas, none); background-size: var(--fundo-tamanho, auto); background-repeat: var(--fundo-repeticao, repeat); background-attachment: var(--fundo-fixacao, scroll); }
+.conteudo { flex: 1; min-width: 0; padding: 28px 32px 110px; overflow-y: auto; background-color: var(--fundo); background-image: var(--fundo-camadas, none); background-size: var(--fundo-tamanho, auto); background-repeat: var(--fundo-repeticao, repeat); background-attachment: var(--fundo-fixacao, scroll); background-position: center top; }
 h1, h2, h3 { font-family: var(--fonte-titulo); }
 h1 { margin: 0 0 4px; font-size: 32px; font-weight: 700; }
 h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; color: var(--principal); }
@@ -137,3 +138,15 @@ textarea { padding: 10px 12px; width: 100%; line-height: 1.5; }
 .tema-cartao .amostra i { width: 22px; height: 22px; border-radius: 11px; border: 1px solid rgba(0, 0, 0, 0.18); display: inline-block; }
 .tema-cartao .corpo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .logo-previa { width: 72px; height: 72px; border-radius: 18px; object-fit: contain; background: var(--neutro); border: 1px solid var(--borda); }
+
+/* pré-visualização de tema: uma tela em miniatura */
+.previa { display: flex; border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; height: 150px; background: var(--fundo); font-size: 10px; }
+.previa .pmenu { width: 26%; flex: none; padding: 8px 6px; display: flex; flex-direction: column; gap: 4px; background-color: var(--menu); color: var(--sobre-menu); background-repeat: repeat; background-position: center top; }
+.previa .pmenu b { display: block; height: 7px; border-radius: 4px; background: currentColor; opacity: 0.55; }
+.previa .pmenu b.on { opacity: 1; background: var(--menu-ativo); outline: 1px solid var(--sobre-menu); }
+.previa .ptela { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 6px; background-color: var(--fundo); background-repeat: repeat; background-position: center top; min-width: 0; }
+.previa .ptela strong { font-family: var(--fonte-titulo); font-size: 12px; color: var(--texto); }
+.previa .pcartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 6px; color: var(--texto); }
+.previa .pbotao { align-self: flex-start; background: var(--principal); color: var(--sobre-principal); border-radius: 8px; padding: 3px 9px; font-weight: 700; }
+.previa.grande { height: 220px; font-size: 12px; }
+.previa.grande .ptela strong { font-size: 15px; }

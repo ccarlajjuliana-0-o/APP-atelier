@@ -32,16 +32,35 @@ export interface TemaBase {
   saudacao: string; // frase acolhedora no Início durante o tema
 }
 
-export interface TemaPersonalizado extends TemaBase {
-  imagem: Blob | null;
+export type ModoImagem = 'unica' | 'repetida';
+export type ImagemDoMenu = 'nenhuma' | 'mesma' | 'propria';
+
+/** Tudo que muda o visual de um tema (o que a pré-visualização precisa para se desenhar). */
+export interface AparenciaDoTema {
+  cores: CoresTema;
+  motivo: Motivo;
+  corMotivo: string;
+  imagem: Blob | null; // fundo da tela
   veu: number; // 40–95: quanto a cor de fundo cobre a imagem (para o texto continuar legível)
+  modoImagem: ModoImagem; // uma imagem só ou repetida
+  tamanho: number; // tamanho de cada repetição, em px
+  menuImagem: ImagemDoMenu; // fundo do menu lateral
+  menuImagemPropria: Blob | null;
+  menuModo: ModoImagem;
+  menuVeu: number;
+}
+
+export const PADROES_FUNDO = { veu: 82, modoImagem: 'unica' as ModoImagem, tamanho: 160, menuImagem: 'nenhuma' as ImagemDoMenu, menuModo: 'unica' as ModoImagem, menuVeu: 70 };
+
+/** Tema criado por você, ou um tema pronto que você ajustou (mesmo id do pronto; "restaurar" arquiva o ajuste). */
+export interface TemaPersonalizado extends TemaBase, AparenciaDoTema {
   ativo: boolean;
   atualizadoEm: string;
 }
 
 export const DIAS_ANTES = 7;
 export const DIAS_DEPOIS = 5;
-export const VEU_PADRAO = 82;
+export const VEU_PADRAO = PADROES_FUNDO.veu;
 
 export const TEMAS_PRONTOS: TemaBase[] = [
   { id: 'anonovo', nome: 'Ano Novo', regra: { tipo: 'fixa', mes: 1, dia: 1 }, cores: { principal: '#8A6A1F', principalEscuro: '#D8B25E', apoio: '#E4E7F5', menu: '#1F2A4D' }, motivo: 'estrela', corMotivo: '#D8A776', saudacao: 'Feliz ano novo! Que venham páginas em branco cheias de histórias. ✨' },
@@ -127,42 +146,61 @@ export interface OpcoesDeTema {
   temaDiasDepois?: number;
 }
 
-export interface TemaResolvido {
+export interface TemaResolvido extends AparenciaDoTema {
   id: string;
   nome: string;
-  cores: CoresTema;
-  motivo: Motivo;
-  corMotivo: string;
   saudacao: string;
-  imagem: Blob | null;
-  veu: number;
   personalizado: boolean;
+  ajustado: boolean; // tema pronto com ajustes seus
   manual: boolean; // escolhido por você (não sai sozinho)
   fim: string | null; // último dia do tema automático
 }
 
 const limitarDias = (n: number | undefined, padrao: number) => (typeof n === 'number' && Number.isFinite(n) ? Math.min(30, Math.max(0, Math.round(n))) : padrao);
+const entre = (n: unknown, min: number, max: number, padrao: number) => (typeof n === 'number' && Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : padrao);
 
-const completar = (t: TemaBase | TemaPersonalizado, personalizado: boolean, manual: boolean, fim: string | null): TemaResolvido => ({
-  id: t.id, nome: t.nome, cores: t.cores, motivo: t.motivo, corMotivo: t.corMotivo, saudacao: t.saudacao,
-  imagem: personalizado ? (t as TemaPersonalizado).imagem ?? null : null,
-  veu: personalizado ? (t as TemaPersonalizado).veu || VEU_PADRAO : VEU_PADRAO,
-  personalizado, manual, fim,
+/** Preenche o que faltar em temas salvos por versões anteriores do app. */
+export function completarTema(t: TemaBase & Partial<TemaPersonalizado>): TemaPersonalizado {
+  return {
+    ...t,
+    imagem: t.imagem ?? null,
+    veu: entre(t.veu, 40, 95, PADROES_FUNDO.veu),
+    modoImagem: t.modoImagem === 'repetida' ? 'repetida' : 'unica',
+    tamanho: entre(t.tamanho, 60, 400, PADROES_FUNDO.tamanho),
+    menuImagem: t.menuImagem === 'mesma' || t.menuImagem === 'propria' ? t.menuImagem : 'nenhuma',
+    menuImagemPropria: t.menuImagemPropria ?? null,
+    menuModo: t.menuModo === 'repetida' ? 'repetida' : 'unica',
+    menuVeu: entre(t.menuVeu, 30, 95, PADROES_FUNDO.menuVeu),
+    ativo: t.ativo !== false,
+    atualizadoEm: t.atualizadoEm ?? '',
+  };
+}
+
+/** Ponto de partida para ajustar um tema pronto: mesmas cores e desenho, sem imagens. */
+export const daBase = (b: TemaBase): TemaPersonalizado => completarTema({ ...b, cores: { ...b.cores } });
+
+const resolvido = (t: TemaPersonalizado, personalizado: boolean, ajustado: boolean, manual: boolean, fim: string | null): TemaResolvido => ({
+  id: t.id, nome: t.nome, saudacao: t.saudacao, cores: t.cores, motivo: t.motivo, corMotivo: t.corMotivo, imagem: t.imagem, veu: t.veu,
+  modoImagem: t.modoImagem, tamanho: t.tamanho, menuImagem: t.menuImagem, menuImagemPropria: t.menuImagemPropria, menuModo: t.menuModo, menuVeu: t.menuVeu,
+  personalizado, ajustado, manual, fim,
 });
 
 export function resolverTema(o: OpcoesDeTema, personalizados: TemaPersonalizado[], hoje: string): TemaResolvido | null {
   const modo = o.temaFestivo ?? 'automatico';
   if (modo === 'desligado') return null;
-  const meus = personalizados.filter((t) => t.ativo);
-  const todos = [...meus.map((t) => ({ t, p: true })), ...TEMAS_PRONTOS.map((t) => ({ t, p: false }))];
+  const meus = personalizados.filter((t) => t.ativo !== false).map((t) => completarTema(t));
+  const prontos = TEMAS_PRONTOS.filter((b) => !meus.some((m) => m.id === b.id));
+  const todos = [
+    ...meus.map((t) => ({ t, ajustado: TEMAS_PRONTOS.some((b) => b.id === t.id), personalizado: !TEMAS_PRONTOS.some((b) => b.id === t.id) })),
+    ...prontos.map((b) => ({ t: daBase(b), ajustado: false, personalizado: false })),
+  ];
   if (modo !== 'automatico') {
-    const achado = todos.find((x) => x.t.id === modo);
-    return achado ? completar(achado.t, achado.p, true, null) : null;
+    const x = todos.find((y) => y.t.id === modo);
+    return x ? resolvido(x.t, x.personalizado, x.ajustado, true, null) : null;
   }
-  const dia = temaDoDia(todos.map((x) => ({ id: x.t.id, regra: x.t.regra })), hoje, limitarDias(o.temaDiasAntes, DIAS_ANTES), limitarDias(o.temaDiasDepois, DIAS_DEPOIS));
-  if (!dia) return null;
-  const achado = todos.find((x) => x.t.id === dia.id);
-  return achado ? completar(achado.t, achado.p, false, dia.fim) : null;
+  const dia = temaDoDia(todos.map((y) => ({ id: y.t.id, regra: y.t.regra })), hoje, limitarDias(o.temaDiasAntes, DIAS_ANTES), limitarDias(o.temaDiasDepois, DIAS_DEPOIS));
+  const x = dia && todos.find((y) => y.t.id === dia.id);
+  return x && dia ? resolvido(x.t, x.personalizado, x.ajustado, false, dia.fim) : null;
 }
 
 // ---------- desenho de fundo ----------
@@ -201,4 +239,34 @@ export function clarear(hex: string): string {
   const n = parseInt(hex.replace('#', ''), 16);
   const v = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((x) => Math.round(x + (255 - x) * 0.38));
   return '#' + v.map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+// ---------- camadas de fundo (tela e menu) ----------
+
+export interface CamadasFundo { camadas: string; tamanho: string; repeticao: string; fixacao: string }
+
+/**
+ * Monta o fundo em CSS. Com imagem: um véu na cor do fundo por cima (para o texto continuar legível), e a imagem
+ * inteira cobrindo a área ("unica") ou repetida em ladrilhos ("repetida"). Sem imagem, o desenho repetido, se houver.
+ */
+export function camadasDeFundo(o: { url: string | null; desenho: string; veu: number; modo: ModoImagem; tamanho: number; corVeu: string }): CamadasFundo | null {
+  if (o.url) {
+    const v = `color-mix(in srgb, ${o.corVeu} ${o.veu}%, transparent)`;
+    const camadas = `linear-gradient(${v}, ${v}), url("${o.url}")`;
+    return o.modo === 'unica'
+      ? { camadas, tamanho: 'auto, cover', repeticao: 'no-repeat, no-repeat', fixacao: 'scroll, scroll' }
+      : { camadas, tamanho: `auto, ${o.tamanho}px auto`, repeticao: 'no-repeat, repeat', fixacao: 'scroll, scroll' };
+  }
+  if (o.desenho) return { camadas: `url("${o.desenho}")`, tamanho: '160px 160px', repeticao: 'repeat', fixacao: 'scroll' };
+  return null;
+}
+
+/** Fundos da tela e do menu lateral para um tema, dadas as imagens já prontas como endereço. */
+export function fundosDoTema(a: AparenciaDoTema, urls: { imagem: string | null; menu: string | null }): { conteudo: CamadasFundo | null; menu: CamadasFundo | null } {
+  const desenho = svgDoMotivo(a.motivo, a.corMotivo);
+  const conteudo = camadasDeFundo({ url: urls.imagem, desenho, veu: a.veu, modo: a.modoImagem, tamanho: a.tamanho, corVeu: 'var(--fundo)' });
+  let menu: CamadasFundo | null = null;
+  if (a.menuImagem === 'mesma') menu = camadasDeFundo({ url: urls.imagem, desenho, veu: a.menuVeu, modo: a.menuModo, tamanho: a.tamanho, corVeu: 'var(--menu)' });
+  else if (a.menuImagem === 'propria') menu = camadasDeFundo({ url: urls.menu, desenho: '', veu: a.menuVeu, modo: a.menuModo, tamanho: a.tamanho, corVeu: 'var(--menu)' });
+  return { conteudo, menu };
 }

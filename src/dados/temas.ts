@@ -1,8 +1,8 @@
 import { db, novoId } from './db.ts';
-import type { TemaPersonalizado } from '../dominio/temas.ts';
+import { completarTema, type TemaPersonalizado } from '../dominio/temas.ts';
 
 export async function listarTemasPersonalizados(): Promise<TemaPersonalizado[]> {
-  return (await db.temas.toArray()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return (await db.temas.toArray()).map((t) => completarTema(t)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
 /** Temas não são apagados: os que não servem mais ficam arquivados. */

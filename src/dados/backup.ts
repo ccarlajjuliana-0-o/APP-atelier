@@ -39,7 +39,7 @@ export async function exportarTudo(): Promise<Blob> {
     (await db.publicacoes.toArray()).map(async (p) => ({ ...p, imagens: await Promise.all((p.imagens ?? []).map(blobParaBase64)) })),
   );
   const temas = await Promise.all(
-    (await db.temas.toArray()).map(async (t) => ({ ...t, imagem: t.imagem ? await blobParaBase64(t.imagem) : null })),
+    (await db.temas.toArray()).map(async (t) => ({ ...t, imagem: t.imagem ? await blobParaBase64(t.imagem) : null, menuImagemPropria: t.menuImagemPropria ? await blobParaBase64(t.menuImagemPropria) : null })),
   );
   const identidade = await Promise.all(
     (await db.identidade.toArray()).map(async (i) => ({ ...i, imagem: i.imagem ? await blobParaBase64(i.imagem) : null })),
@@ -92,7 +92,7 @@ export async function importarTudo(arquivo: File): Promise<void> {
     (dados.publicacoes ?? []).map(async (p: any) => ({ ...p, imagens: await Promise.all((p.imagens ?? []).map(base64ParaBlob)) })),
   );
   const temas = await Promise.all(
-    (dados.temas ?? []).map(async (t: any) => ({ ...t, imagem: t.imagem ? await base64ParaBlob(t.imagem) : null })),
+    (dados.temas ?? []).map(async (t: any) => ({ ...t, imagem: t.imagem ? await base64ParaBlob(t.imagem) : null, menuImagemPropria: t.menuImagemPropria ? await base64ParaBlob(t.menuImagemPropria) : null })),
   );
   const identidade = await Promise.all(
     (dados.identidade ?? []).map(async (i: any) => ({ ...i, imagem: i.imagem ? await base64ParaBlob(i.imagem) : null })),

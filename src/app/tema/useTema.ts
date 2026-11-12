@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { liveQuery } from 'dexie';
 import { db, type PreferenciasRegistro } from '../../dados/db.ts';
 import { hojeLocal } from '../../dados/pedidos.ts';
-import { resolverTema, svgDoMotivo, type TemaPersonalizado, type TemaResolvido } from '../../dominio/temas.ts';
+import { fundosDoTema, resolverTema, type TemaPersonalizado, type TemaResolvido } from '../../dominio/temas.ts';
+import { useUrlsDoTema } from './fundos.ts';
 import {
   FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PREFERENCIAS_PADRAO, achar, remotoMaisNovo, urlDasFontes, variaveis, type Preferencias,
 } from './tema.ts';
@@ -64,27 +65,26 @@ export function useTema(): [Preferencias, (p: Preferencias) => void, TemaResolvi
     [prefs.temaFestivo, prefs.temaDiasAntes, prefs.temaDiasDepois, personalizados, hoje], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // Fundo da tela e do menu lateral (imagem única ou repetida, ou só o desenho do tema).
+  const urls = useUrlsDoTema(tema);
   useEffect(() => {
     const raiz = document.documentElement.style;
-    const limpar = () => ['--fundo-camadas', '--fundo-tamanho', '--fundo-repeticao', '--fundo-fixacao'].forEach((k) => raiz.removeProperty(k));
+    const chaves = ['fundo', 'menu'].flatMap((n) => ['camadas', 'tamanho', 'repeticao', 'fixacao'].map((k) => `--${n}-${k}`));
+    const limpar = () => chaves.forEach((k) => raiz.removeProperty(k));
     if (!tema) return limpar();
-    if (tema.imagem) {
-      const url = URL.createObjectURL(tema.imagem);
-      const veu = `color-mix(in srgb, var(--fundo) ${tema.veu}%, transparent)`;
-      raiz.setProperty('--fundo-camadas', `linear-gradient(${veu}, ${veu}), url("${url}")`);
-      raiz.setProperty('--fundo-tamanho', 'auto, cover');
-      raiz.setProperty('--fundo-repeticao', 'no-repeat, no-repeat');
-      raiz.setProperty('--fundo-fixacao', 'fixed, fixed');
-      return () => URL.revokeObjectURL(url);
+    const f = fundosDoTema(tema, urls);
+    for (const [nome, c] of [['fundo', f.conteudo], ['menu', f.menu]] as const) {
+      if (!c) {
+        ['camadas', 'tamanho', 'repeticao', 'fixacao'].forEach((k) => raiz.removeProperty(`--${nome}-${k}`));
+        continue;
+      }
+      raiz.setProperty(`--${nome}-camadas`, c.camadas);
+      raiz.setProperty(`--${nome}-tamanho`, c.tamanho);
+      raiz.setProperty(`--${nome}-repeticao`, c.repeticao);
+      raiz.setProperty(`--${nome}-fixacao`, c.fixacao);
     }
-    const desenho = svgDoMotivo(tema.motivo, tema.corMotivo);
-    if (!desenho) return limpar();
-    raiz.setProperty('--fundo-camadas', `url("${desenho}")`);
-    raiz.setProperty('--fundo-tamanho', '160px 160px');
-    raiz.setProperty('--fundo-repeticao', 'repeat');
-    raiz.setProperty('--fundo-fixacao', 'scroll');
     return limpar;
-  }, [tema?.id, tema?.imagem, tema?.veu, tema?.motivo, tema?.corMotivo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tema, urls]);
 
   useEffect(() => {
     const v = variaveis(prefs, sistemaEscuro, tema?.cores ?? null);

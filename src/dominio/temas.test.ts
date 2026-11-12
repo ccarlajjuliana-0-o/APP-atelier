@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  TEMAS_PRONTOS, MOTIVOS, pascoa, dataDaRegra, temaDoDia, proximaDataDoTema, resolverTema, svgDoMotivo, clarear, type TemaPersonalizado,
+  TEMAS_PRONTOS, MOTIVOS, pascoa, completarTema, daBase, camadasDeFundo, fundosDoTema, dataDaRegra, temaDoDia, proximaDataDoTema, resolverTema, svgDoMotivo, clarear, type TemaPersonalizado,
 } from './temas.ts';
 import { contraste, textoSobre } from '../app/tema/tema.ts';
 import { conferirComAMarca } from './divulgacao.ts';
@@ -43,8 +43,9 @@ test('próxima data do tema', () => {
 });
 
 const meu = (o: Partial<TemaPersonalizado>): TemaPersonalizado => ({
+  ...daBase({ ...TEMAS_PRONTOS[0], regra: { tipo: 'nenhuma' } }),
   id: 'meu1', nome: 'Aniversário do atelier', regra: { tipo: 'fixa', mes: 11, dia: 15 }, cores: { principal: '#8A4F9E', principalEscuro: '#C398C8', apoio: '#F1CDD9', menu: '#4A2E5F' },
-  motivo: 'nenhum', corMotivo: '#C398C8', saudacao: 'Parabéns, atelier!', imagem: null, veu: 80, ativo: true, atualizadoEm: '', ...o,
+  motivo: 'nenhum', corMotivo: '#C398C8', saudacao: 'Parabéns, atelier!', ativo: true, atualizadoEm: '', ...o,
 });
 
 test('resolver: automático, manual, desligado e temas próprios', () => {
@@ -86,4 +87,42 @@ test('temas prontos: ids únicos, textos na voz da marca e cores legíveis', () 
 test('clarear', () => {
   assert.equal(clarear('#000000'), '#616161');
   assert.equal(clarear('#FFFFFF'), '#ffffff');
+});
+
+test('completarTema preenche o que falta e limita valores', () => {
+  const t = completarTema({ ...TEMAS_PRONTOS[0], veu: 5, tamanho: 9999, menuVeu: 200 } as never);
+  assert.equal(t.modoImagem, 'unica');
+  assert.equal(t.menuImagem, 'nenhuma');
+  assert.equal(t.veu, 40);
+  assert.equal(t.tamanho, 400);
+  assert.equal(t.menuVeu, 95);
+});
+
+test('camadasDeFundo: imagem única cobre, repetida ladrilha', () => {
+  const base = { url: 'blob:x', desenho: '', veu: 80, tamanho: 120, corVeu: 'var(--fundo)' };
+  const u = camadasDeFundo({ ...base, modo: 'unica' })!;
+  assert.match(u.tamanho, /cover/);
+  const r = camadasDeFundo({ ...base, modo: 'repetida' })!;
+  assert.match(r.tamanho, /120px/);
+  assert.match(r.repeticao, /repeat$/);
+  assert.equal(camadasDeFundo({ ...base, url: null, modo: 'unica' }), null);
+});
+
+test('fundosDoTema: menu nenhum / mesma / propria', () => {
+  const a = daBase(TEMAS_PRONTOS[0]);
+  assert.equal(fundosDoTema(a, { imagem: 'blob:a', menu: 'blob:m' }).menu, null);
+  const mesma = fundosDoTema({ ...a, menuImagem: 'mesma' }, { imagem: 'blob:a', menu: 'blob:m' }).menu!;
+  assert.match(mesma.camadas, /blob:a/);
+  const propria = fundosDoTema({ ...a, menuImagem: 'propria' }, { imagem: 'blob:a', menu: 'blob:m' }).menu!;
+  assert.match(propria.camadas, /blob:m/);
+  assert.equal(fundosDoTema({ ...a, menuImagem: 'propria' }, { imagem: 'blob:a', menu: null }).menu, null);
+});
+
+test('tema pronto ajustado (mesmo id) substitui o original', () => {
+  const orig = TEMAS_PRONTOS[0];
+  const meuNatal = meu({ id: orig.id, nome: 'Meu ajuste', regra: orig.regra, veu: 60 });
+  const r = resolverTema({ temaFestivo: orig.id }, [meuNatal], '2026-01-01')!;
+  assert.equal(r.nome, 'Meu ajuste');
+  assert.equal(r.ajustado, true);
+  assert.equal(r.personalizado, false);
 });
