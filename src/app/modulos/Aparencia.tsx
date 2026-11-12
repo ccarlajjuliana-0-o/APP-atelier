@@ -6,6 +6,7 @@ import {
   FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, urlDasFontes, type Fonte, type Modo, type Preferencias,
 } from '../tema/tema.ts';
 import { carregarFontes } from '../tema/fontes.ts';
+import { Escolha } from '../componentes/Escolha.tsx';
 
 const MODOS: { id: Modo; nome: string }[] = [
   { id: 'claro', nome: 'Claro' },
@@ -15,20 +16,19 @@ const MODOS: { id: Modo; nome: string }[] = [
 
 const Bolinha = ({ cor }: { cor: string }) => <span style={{ width: 22, height: 22, borderRadius: 11, background: cor, display: 'inline-block', border: '1px solid var(--borda)', flex: 'none' }} />;
 
-function EscolhaDeFonte(p: { titulo: string; dica: string; fontes: Fonte[]; escolhida: string | undefined; amostra: string; tamanho: number; aoEscolher: (id: string) => void }) {
+function EscolhaDeFonte(p: { titulo: string; fontes: Fonte[]; escolhida: string | undefined; amostra: string; tamanho: number; aoEscolher: (id: string) => void }) {
   const atual = achar(p.fontes, p.escolhida);
   return (
-    <section className="cartao" style={{ marginTop: 0 }}>
-      <h2>{p.titulo}</h2>
-      <p className="suave" style={{ marginTop: 0 }}>{p.dica}</p>
-      <div className="linha" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-        {p.fontes.map((f) => (
-          <button key={f.id} className="pilula" aria-pressed={atual.id === f.id} onClick={() => p.aoEscolher(f.id)} style={{ textAlign: 'left', fontFamily: f.familia, fontSize: p.tamanho, minHeight: 48 }}>
-            {p.amostra} <span style={{ fontSize: 12, opacity: 0.75, fontFamily: 'var(--fonte-corpo)' }}> · {f.nome}</span>
-          </button>
-        ))}
-      </div>
-    </section>
+    <Escolha
+      rotulo={p.titulo}
+      valor={atual.id}
+      aoEscolher={p.aoEscolher}
+      opcoes={p.fontes.map((f) => ({
+        id: f.id,
+        estilo: { fontFamily: f.familia, fontSize: p.tamanho },
+        rotulo: <>{p.amostra} <span style={{ fontSize: 12, opacity: 0.75, fontFamily: 'var(--fonte-corpo)' }}>· {f.nome}</span></>,
+      }))}
+    />
   );
 }
 
@@ -111,43 +111,36 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
         </section>
       </div>
 
-      <section className="cartao">
-        <h2>Cores</h2>
-        <div className="grade" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
-          {PALETAS.map((p) => (
-            <button
-              key={p.id}
-              className="pilula"
-              aria-pressed={prefs.paletaId === p.id}
-              onClick={() => aoMudar({ ...prefs, paletaId: p.id, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}
-            >
-              <Bolinha cor={p.principal} />
-              <Bolinha cor={p.apoio} />
-              <Bolinha cor={p.menu} />
-              <span>{p.nome}</span>
-            </button>
-          ))}
-        </div>
-        <h3 style={{ margin: '16px 0 6px' }}>Ou escolha as suas cores</h3>
-        <div className="linha" style={{ gap: 18 }}>
-          <label>Botões e destaques{' '}<input type="color" value={prefs.principalLivre ?? paleta.principal} onChange={(e) => aoMudar({ ...prefs, principalLivre: e.target.value })} /></label>
-          <label>Detalhes suaves{' '}<input type="color" value={prefs.apoioLivre ?? paleta.apoio} onChange={(e) => aoMudar({ ...prefs, apoioLivre: e.target.value })} /></label>
-          <label>Menu lateral{' '}<input type="color" value={prefs.menuLivre ?? paleta.menu} onChange={(e) => aoMudar({ ...prefs, menuLivre: e.target.value })} /></label>
-          <button className="btn" onClick={() => aoMudar({ ...prefs, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}>Voltar às cores da paleta</button>
-        </div>
-        <p className="suave">O texto sobre as cores troca sozinho entre claro e escuro para manter a leitura. No modo escuro, o menu fica escuro, a menos que você escolha uma cor para ele.</p>
-      </section>
-
       <div className="grade" style={{ marginTop: 16 }}>
-        <EscolhaDeFonte titulo="Fonte dos títulos" dica="Nomes de telas e cartões." fontes={FONTES_TITULO} escolhida={prefs.fonteTitulo} amostra="Pedidos em andamento" tamanho={20}
-          aoEscolher={(id) => aoMudar({ ...prefs, fonteTitulo: id })} />
-        <EscolhaDeFonte titulo="Fonte do texto" dica="Textos, tabelas e botões." fontes={FONTES_CORPO} escolhida={prefs.fonteCorpo} amostra="Cada detalhe feito à mão" tamanho={16}
-          aoEscolher={(id) => aoMudar({ ...prefs, fonteCorpo: id })} />
-        <EscolhaDeFonte titulo="Fonte cursiva" dica="O nome do atelier no menu." fontes={FONTES_SCRIPT} escolhida={prefs.fonteScript} amostra="Craft Notes Unique" tamanho={26}
-          aoEscolher={(id) => aoMudar({ ...prefs, fonteScript: id })} />
+        <section className="cartao" style={{ marginTop: 0 }}>
+          <h2>Cores</h2>
+          <Escolha
+            rotulo="Paleta"
+            valor={paleta.id}
+            aoEscolher={(id) => aoMudar({ ...prefs, paletaId: id, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}
+            opcoes={PALETAS.map((p) => ({ id: p.id, rotulo: <><Bolinha cor={p.principal} /><Bolinha cor={p.apoio} /><Bolinha cor={p.menu} /><span>{p.nome}</span></> }))}
+          />
+          <details className="recolhivel" style={{ marginTop: 10 }}>
+            <summary>Ou escolher minhas cores</summary>
+            <div className="linha" style={{ gap: 18, marginTop: 6 }}>
+              <label>Botões e destaques{' '}<input type="color" value={prefs.principalLivre ?? paleta.principal} onChange={(e) => aoMudar({ ...prefs, principalLivre: e.target.value })} /></label>
+              <label>Detalhes suaves{' '}<input type="color" value={prefs.apoioLivre ?? paleta.apoio} onChange={(e) => aoMudar({ ...prefs, apoioLivre: e.target.value })} /></label>
+              <label>Menu lateral{' '}<input type="color" value={prefs.menuLivre ?? paleta.menu} onChange={(e) => aoMudar({ ...prefs, menuLivre: e.target.value })} /></label>
+              <button className="btn" onClick={() => aoMudar({ ...prefs, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}>Voltar às cores da paleta</button>
+            </div>
+          </details>
+          <p className="suave" style={{ fontSize: 13 }}>O texto sobre as cores troca sozinho entre claro e escuro para manter a leitura. No modo escuro, o menu fica escuro, a menos que você escolha uma cor para ele.</p>
+        </section>
+        <section className="cartao" style={{ marginTop: 0 }}>
+          <h2>Fontes</h2>
+          <div className="linha" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+            <EscolhaDeFonte titulo="Títulos" fontes={FONTES_TITULO} escolhida={prefs.fonteTitulo} amostra="Pedidos em andamento" tamanho={20} aoEscolher={(id) => aoMudar({ ...prefs, fonteTitulo: id })} />
+            <EscolhaDeFonte titulo="Texto" fontes={FONTES_CORPO} escolhida={prefs.fonteCorpo} amostra="Cada detalhe feito à mão" tamanho={16} aoEscolher={(id) => aoMudar({ ...prefs, fonteCorpo: id })} />
+            <EscolhaDeFonte titulo="Cursiva (nome do atelier no menu)" fontes={FONTES_SCRIPT} escolhida={prefs.fonteScript} amostra="Craft Notes Unique" tamanho={26} aoEscolher={(id) => aoMudar({ ...prefs, fonteScript: id })} />
+          </div>
+          <p className="suave" style={{ fontSize: 13 }}>As fontes vêm da internet. Sem conexão, o app usa uma fonte parecida até voltar.</p>
+        </section>
       </div>
-      <p className="suave">As fontes vêm da internet. Sem conexão, o app usa uma fonte parecida até voltar.</p>
       <div className="rodape" style={{ marginTop: 8 }}>
         <button className="btn" onClick={() => aoMudar({ ...PREFERENCIAS_PADRAO, modo: prefs.modo })}>Voltar ao visual padrão da marca</button>
       </div>

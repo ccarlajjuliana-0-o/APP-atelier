@@ -150,3 +150,14 @@ textarea { padding: 10px 12px; width: 100%; line-height: 1.5; }
 .previa .pbotao { align-self: flex-start; background: var(--principal); color: var(--sobre-principal); border-radius: 8px; padding: 3px 9px; font-weight: 700; }
 .previa.grande { height: 220px; font-size: 12px; }
 .previa.grande .ptela strong { font-size: 15px; }
+
+/* caixa de seleção com lista (cores e fontes) */
+.escolha { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.escolha-rotulo { font-weight: 600; font-size: 14px; }
+.escolha-botao { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 46px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); text-align: left; }
+.escolha-atual { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.escolha-lista { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; margin: 4px 0 0; padding: 6px; list-style: none; max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 14px; background: var(--cartao); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22); }
+.escolha-lista button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--texto); text-align: left; }
+.escolha-lista button:hover { background: var(--neutro); }
+.escolha-lista li[aria-selected='true'] button { background: var(--neutro); font-weight: 700; }
+details.recolhivel > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
