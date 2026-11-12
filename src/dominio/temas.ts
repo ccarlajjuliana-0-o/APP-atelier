@@ -34,6 +34,9 @@ export interface TemaBase {
   saudacao: string; // frase acolhedora no Início durante o tema
 }
 
+import { planoDoLadrilho, precisaLadrilho, ladoEmPx, type Disposicao, type Medida, type Plano } from './ladrilho.ts';
+export type { Disposicao, Medida } from './ladrilho.ts';
+
 export type ModoImagem = 'unica' | 'repetida';
 export type ImagemDoMenu = 'nenhuma' | 'mesma' | 'propria';
 
@@ -46,13 +49,18 @@ export interface AparenciaDoTema {
   veu: number; // 40–95: quanto a cor de fundo cobre a imagem (para o texto continuar legível)
   modoImagem: ModoImagem; // uma imagem só ou repetida
   tamanho: number; // tamanho de cada repetição, em px
+  tamanhoUnico: number; // 20–100: tamanho de uma imagem só, em % da largura (100 = cobre tudo)
+  disposicao: Disposicao; // como as repetições se organizam
+  espaco: number; // espaço entre as repetições, em px
+  medida: Medida; // tamanho em px ou número de imagens por linha
+  porLinha: number; // imagens por linha (1–12)
   menuImagem: ImagemDoMenu; // fundo do menu lateral
   menuImagemPropria: Blob | null;
   menuModo: ModoImagem;
   menuVeu: number;
 }
 
-export const PADROES_FUNDO = { veu: 82, modoImagem: 'unica' as ModoImagem, tamanho: 160, menuImagem: 'nenhuma' as ImagemDoMenu, menuModo: 'unica' as ModoImagem, menuVeu: 70 };
+export const PADROES_FUNDO = { veu: 82, modoImagem: 'unica' as ModoImagem, tamanho: 160, tamanhoUnico: 100, disposicao: 'grade' as Disposicao, espaco: 0, medida: 'tamanho' as Medida, porLinha: 4, menuImagem: 'nenhuma' as ImagemDoMenu, menuModo: 'unica' as ModoImagem, menuVeu: 70 };
 
 /** Tema criado por você, ou um tema pronto que você ajustou (mesmo id do pronto; "restaurar" arquiva o ajuste). */
 export interface TemaPersonalizado extends TemaBase, AparenciaDoTema {
@@ -169,6 +177,11 @@ export function completarTema(t: TemaBase & Partial<TemaPersonalizado>): TemaPer
     veu: entre(t.veu, 40, 95, PADROES_FUNDO.veu),
     modoImagem: t.modoImagem === 'repetida' ? 'repetida' : 'unica',
     tamanho: entre(t.tamanho, 60, 400, PADROES_FUNDO.tamanho),
+    tamanhoUnico: entre(t.tamanhoUnico, 20, 100, PADROES_FUNDO.tamanhoUnico),
+    disposicao: t.disposicao === 'diagonal' || t.disposicao === 'aleatoria' ? t.disposicao : 'grade',
+    espaco: entre(t.espaco, 0, 120, PADROES_FUNDO.espaco),
+    medida: t.medida === 'porLinha' ? 'porLinha' : 'tamanho',
+    porLinha: entre(t.porLinha, 1, 12, PADROES_FUNDO.porLinha),
     menuImagem: t.menuImagem === 'mesma' || t.menuImagem === 'propria' ? t.menuImagem : 'nenhuma',
     menuImagemPropria: t.menuImagemPropria ?? null,
     menuModo: t.menuModo === 'repetida' ? 'repetida' : 'unica',
@@ -183,7 +196,7 @@ export const daBase = (b: TemaBase): TemaPersonalizado => completarTema({ ...b, 
 
 const resolvido = (t: TemaPersonalizado, personalizado: boolean, ajustado: boolean, manual: boolean, fim: string | null): TemaResolvido => ({
   id: t.id, nome: t.nome, saudacao: t.saudacao, cores: t.cores, motivo: t.motivo, corMotivo: t.corMotivo, imagem: t.imagem, veu: t.veu,
-  modoImagem: t.modoImagem, tamanho: t.tamanho, menuImagem: t.menuImagem, menuImagemPropria: t.menuImagemPropria, menuModo: t.menuModo, menuVeu: t.menuVeu,
+  modoImagem: t.modoImagem, tamanho: t.tamanho, tamanhoUnico: t.tamanhoUnico, disposicao: t.disposicao, espaco: t.espaco, medida: t.medida, porLinha: t.porLinha, menuImagem: t.menuImagem, menuImagemPropria: t.menuImagemPropria, menuModo: t.menuModo, menuVeu: t.menuVeu,
   personalizado, ajustado, manual, fim,
 });
 
@@ -247,28 +260,58 @@ export function clarear(hex: string): string {
 
 export interface CamadasFundo { camadas: string; tamanho: string; repeticao: string; fixacao: string }
 
+export interface LadrilhoPronto { url: string; plano: Plano }
+
+type Disposicoes = Pick<AparenciaDoTema, 'tamanhoUnico' | 'disposicao' | 'espaco' | 'medida' | 'porLinha'>;
+
 /**
  * Monta o fundo em CSS. Com imagem: um véu na cor do fundo por cima (para o texto continuar legível), e a imagem
- * inteira cobrindo a área ("unica") ou repetida em ladrilhos ("repetida"). Sem imagem, o desenho repetido, se houver.
+ * em tamanho único ("unica": 100% cobre tudo, menos que isso diminui) ou repetida ("repetida"). Quando a repetição pede
+ * espaço, diagonal ou espalhada, `ladrilho` traz a imagem já montada nesse arranjo. Sem imagem, o desenho repetido, se houver.
  */
-export function camadasDeFundo(o: { url: string | null; desenho: string; veu: number; modo: ModoImagem; tamanho: number; corVeu: string }): CamadasFundo | null {
+export function camadasDeFundo(o: { url: string | null; desenho: string; veu: number; modo: ModoImagem; tamanho: number; corVeu: string; ladrilho?: LadrilhoPronto | null } & Partial<Disposicoes>): CamadasFundo | null {
+  const medida = o.medida ?? 'tamanho';
+  const porLinha = o.porLinha ?? PADROES_FUNDO.porLinha;
   if (o.url) {
     const v = `color-mix(in srgb, ${o.corVeu} ${o.veu}%, transparent)`;
-    const camadas = `linear-gradient(${v}, ${v}), url("${o.url}")`;
-    return o.modo === 'unica'
-      ? { camadas, tamanho: 'auto, cover', repeticao: 'no-repeat, no-repeat', fixacao: 'scroll, scroll' }
-      : { camadas, tamanho: `auto, ${o.tamanho}px auto`, repeticao: 'no-repeat, repeat', fixacao: 'scroll, scroll' };
+    const unico = o.tamanhoUnico ?? 100;
+    if (o.modo === 'unica') {
+      const camadas = `linear-gradient(${v}, ${v}), url("${o.url}")`;
+      return { camadas, tamanho: unico >= 100 ? 'auto, cover' : `auto, ${unico}% auto`, repeticao: 'no-repeat, no-repeat', fixacao: 'scroll, scroll' };
+    }
+    if (o.ladrilho) {
+      const t = medida === 'porLinha' ? `calc(100% * ${o.ladrilho.plano.colunas} / ${porLinha}) auto` : `${o.ladrilho.plano.largura}px ${o.ladrilho.plano.altura}px`;
+      return { camadas: `linear-gradient(${v}, ${v}), url("${o.ladrilho.url}")`, tamanho: `auto, ${t}`, repeticao: 'no-repeat, repeat', fixacao: 'scroll, scroll' };
+    }
+    const t = medida === 'porLinha' ? `calc(100% / ${porLinha}) auto` : `${o.tamanho}px auto`;
+    return { camadas: `linear-gradient(${v}, ${v}), url("${o.url}")`, tamanho: `auto, ${t}`, repeticao: 'no-repeat, repeat', fixacao: 'scroll, scroll' };
   }
   if (o.desenho) return { camadas: `url("${o.desenho}")`, tamanho: `${o.tamanho}px ${o.tamanho}px`, repeticao: 'repeat', fixacao: 'scroll' };
   return null;
 }
 
+export type AlvoDoFundo = 'tela' | 'menu';
+
+/** O que é preciso montar para a repetição desta imagem (arranjo em diagonal, espalhado ou com espaço), ou null se não precisa. */
+export function ladrilhoDoTema(a: AparenciaDoTema, alvo: AlvoDoFundo, areaLargura: number): { fonte: Blob; plano: Plano } | null {
+  const modo = alvo === 'tela' ? a.modoImagem : a.menuModo;
+  const fonte = alvo === 'tela' ? a.imagem : a.menuImagem === 'mesma' ? a.imagem : a.menuImagem === 'propria' ? a.menuImagemPropria : null;
+  if (!fonte || modo !== 'repetida' || !precisaLadrilho(a)) return null;
+  const lado = ladoEmPx({ medida: a.medida, tamanho: a.tamanho, porLinha: a.porLinha, areaLargura });
+  return { fonte, plano: planoDoLadrilho({ disposicao: a.disposicao, lado, espaco: a.espaco }) };
+}
+
 /** Fundos da tela e do menu lateral para um tema, dadas as imagens já prontas como endereço. */
-export function fundosDoTema(a: AparenciaDoTema, urls: { imagem: string | null; menu: string | null }): { conteudo: CamadasFundo | null; menu: CamadasFundo | null } {
+export function fundosDoTema(
+  a: AparenciaDoTema,
+  urls: { imagem: string | null; menu: string | null },
+  ladrilhos: { tela?: LadrilhoPronto | null; menu?: LadrilhoPronto | null } = {},
+): { conteudo: CamadasFundo | null; menu: CamadasFundo | null } {
   const desenho = svgDoMotivo(a.motivo, a.corMotivo);
-  const conteudo = camadasDeFundo({ url: urls.imagem, desenho, veu: a.veu, modo: a.modoImagem, tamanho: a.tamanho, corVeu: 'var(--fundo)' });
+  const comum = { tamanho: a.tamanho, tamanhoUnico: a.tamanhoUnico, disposicao: a.disposicao, espaco: a.espaco, medida: a.medida, porLinha: a.porLinha };
+  const conteudo = camadasDeFundo({ url: urls.imagem, desenho, veu: a.veu, modo: a.modoImagem, corVeu: 'var(--fundo)', ladrilho: ladrilhos.tela, ...comum });
   let menu: CamadasFundo | null = null;
-  if (a.menuImagem === 'mesma') menu = camadasDeFundo({ url: urls.imagem, desenho, veu: a.menuVeu, modo: a.menuModo, tamanho: a.tamanho, corVeu: 'var(--menu)' });
-  else if (a.menuImagem === 'propria') menu = camadasDeFundo({ url: urls.menu, desenho: '', veu: a.menuVeu, modo: a.menuModo, tamanho: a.tamanho, corVeu: 'var(--menu)' });
+  if (a.menuImagem === 'mesma') menu = camadasDeFundo({ url: urls.imagem, desenho, veu: a.menuVeu, modo: a.menuModo, corVeu: 'var(--menu)', ladrilho: ladrilhos.menu, ...comum });
+  else if (a.menuImagem === 'propria') menu = camadasDeFundo({ url: urls.menu, desenho: '', veu: a.menuVeu, modo: a.menuModo, corVeu: 'var(--menu)', ladrilho: ladrilhos.menu, ...comum });
   return { conteudo, menu };
 }

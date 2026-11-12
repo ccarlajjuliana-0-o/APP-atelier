@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  TEMAS_PRONTOS, MOTIVOS, pascoa, completarTema, daBase, camadasDeFundo, fundosDoTema, dataDaRegra, temaDoDia, proximaDataDoTema, resolverTema, svgDoMotivo, clarear, type TemaPersonalizado,
+  TEMAS_PRONTOS, MOTIVOS, pascoa, completarTema, daBase, camadasDeFundo, fundosDoTema, ladrilhoDoTema, dataDaRegra, temaDoDia, proximaDataDoTema, resolverTema, svgDoMotivo, clarear, type TemaPersonalizado,
 } from './temas.ts';
 import { contraste, textoSobre } from '../app/tema/tema.ts';
 import { conferirComAMarca } from './divulgacao.ts';
@@ -130,4 +130,46 @@ test('tema pronto ajustado (mesmo id) substitui o original', () => {
 test('desenho sem imagem respeita o tamanho escolhido', () => {
   const c = camadasDeFundo({ url: null, desenho: 'data:x', veu: 80, modo: 'unica', tamanho: 240, corVeu: 'var(--fundo)' })!;
   assert.equal(c.tamanho, '240px 240px');
+});
+
+test('tema resolvido leva as opções de tamanho e repetição; fundoDoTema monta cada arranjo', () => {
+  const t = meu({ id: 'x1', regra: { tipo: 'nenhuma' }, tamanhoUnico: 60, disposicao: 'diagonal', espaco: 20, medida: 'porLinha', porLinha: 5, modoImagem: 'repetida' });
+  const r = resolverTema({ temaFestivo: 'x1' }, [t], '2026-01-01')!;
+  assert.equal(r.disposicao, 'diagonal');
+  assert.equal(r.porLinha, 5);
+  assert.equal(r.espaco, 20);
+  assert.equal(r.tamanhoUnico, 60);
+});
+
+test('camadasDeFundo: uma imagem menor, por linha e com ladrilho montado', () => {
+  const base = { url: 'blob:i', desenho: '', veu: 80, tamanho: 120, corVeu: 'var(--fundo)' };
+  assert.match(camadasDeFundo({ ...base, modo: 'unica', tamanhoUnico: 50 })!.tamanho, /50% auto/);
+  assert.match(camadasDeFundo({ ...base, modo: 'unica', tamanhoUnico: 100 })!.tamanho, /cover/);
+  assert.match(camadasDeFundo({ ...base, modo: 'repetida', medida: 'porLinha', porLinha: 6 })!.tamanho, /calc\(100% \/ 6\) auto/);
+  const l = camadasDeFundo({ ...base, modo: 'repetida', medida: 'tamanho', ladrilho: { url: 'blob:l', plano: { largura: 140, altura: 280, colunas: 1, itens: [] } } })!;
+  assert.match(l.camadas, /blob:l/);
+  assert.match(l.tamanho, /140px 280px/);
+  const pl = camadasDeFundo({ ...base, modo: 'repetida', medida: 'porLinha', porLinha: 8, ladrilho: { url: 'blob:l', plano: { largura: 600, altura: 600, colunas: 4, itens: [] } } })!;
+  assert.match(pl.tamanho, /calc\(100% \* 4 \/ 8\) auto/);
+});
+
+test('ladrilhoDoTema só pede ladrilho quando o arranjo precisa', () => {
+  const img = new Blob(['x']);
+  const a = daBase(TEMAS_PRONTOS[0]);
+  assert.equal(ladrilhoDoTema({ ...a, imagem: img, modoImagem: 'repetida' }, 'tela', 1000), null);
+  assert.ok(ladrilhoDoTema({ ...a, imagem: img, modoImagem: 'repetida', disposicao: 'diagonal' }, 'tela', 1000));
+  assert.ok(ladrilhoDoTema({ ...a, imagem: img, modoImagem: 'repetida', espaco: 10 }, 'tela', 1000));
+  assert.equal(ladrilhoDoTema({ ...a, imagem: img, modoImagem: 'unica', disposicao: 'diagonal' }, 'tela', 1000), null);
+  assert.equal(ladrilhoDoTema({ ...a, imagem: null, modoImagem: 'repetida', disposicao: 'diagonal' }, 'tela', 1000), null);
+  const m = ladrilhoDoTema({ ...a, imagem: img, menuImagem: 'mesma', menuModo: 'repetida', espaco: 10 }, 'menu', 200);
+  assert.ok(m && m.fonte === img);
+});
+
+test('completarTema limita as novas opções', () => {
+  const c = completarTema({ ...TEMAS_PRONTOS[0], tamanhoUnico: 5, espaco: 999, porLinha: 99, disposicao: 'xyz' as never, medida: 'abc' as never });
+  assert.equal(c.tamanhoUnico, 20);
+  assert.equal(c.espaco, 120);
+  assert.equal(c.porLinha, 12);
+  assert.equal(c.disposicao, 'grade');
+  assert.equal(c.medida, 'tamanho');
 });

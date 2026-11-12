@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { listarTemasPersonalizados, salvarTema } from '../../dados/temas.ts';
-import { reduzirImagem } from '../../dados/imagem.ts';
+import { medirImagem, prepararFundo } from '../../dados/imagem.ts';
+import { AREA_REFERENCIA, LADO_MINIMO_ENVIO, LARGURA_RECOMENDADA_UNICA, avaliarQualidade, ladoEmPx, type Disposicao, type Medida } from '../../dominio/ladrilho.ts';
 import type { Preferencias } from '../tema/tema.ts';
 import {
   DIAS_ANTES, DIAS_DEPOIS, MOTIVOS, TEMAS_PRONTOS, clarear, completarTema, daBase, proximaDataDoTema,
@@ -54,7 +55,7 @@ function SeletorImagem(p: { rotulo: string; imagem: Blob | null; aoMudar: (b: Bl
     e.target.value = '';
     if (!f) return;
     try {
-      p.aoMudar(await reduzirImagem(f, 1920));
+      p.aoMudar(await prepararFundo(f, LADO_MINIMO_ENVIO));
       p.aoErro('');
     } catch (x) {
       p.aoErro(x instanceof Error ? x.message : 'Não consegui usar essa imagem.');
@@ -71,19 +72,80 @@ function SeletorImagem(p: { rotulo: string; imagem: Blob | null; aoMudar: (b: Bl
   );
 }
 
-function ModoDaImagem(p: { modo: 'unica' | 'repetida'; aoModo: (m: 'unica' | 'repetida') => void; tamanho?: number; aoTamanho?: (n: number) => void }) {
+/** Largura e altura da imagem enviada (para avaliar a qualidade). */
+function useMedidas(imagem: Blob | null): { largura: number; altura: number } | null {
+  const [m, setM] = useState<{ largura: number; altura: number } | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    if (!imagem) { setM(null); return; }
+    medirImagem(imagem).then((r) => ativo && setM(r), () => ativo && setM(null));
+    return () => { ativo = false; };
+  }, [imagem]);
+  return m;
+}
+
+const DISPOSICOES: [Disposicao, string][] = [['grade', 'Alinhada'], ['diagonal', 'Em diagonal'], ['aleatoria', 'Espalhada']];
+const MEDIDAS: [Medida, string][] = [['tamanho', 'Por tamanho'], ['porLinha', 'Por imagens na linha']];
+
+/** Opções de tamanho e de repetição de uma imagem de fundo (tela ou menu), com aviso de qualidade. */
+function OpcoesDaImagem(p: { t: TemaPersonalizado; setT: (t: TemaPersonalizado) => void; alvo: 'tela' | 'menu'; imagem: Blob | null }) {
+  const { t, setT } = p;
+  const modo = p.alvo === 'tela' ? t.modoImagem : t.menuModo;
+  const mudarModo = (m: 'unica' | 'repetida') => setT(p.alvo === 'tela' ? { ...t, modoImagem: m } : { ...t, menuModo: m });
+  const med = useMedidas(p.imagem);
+  const area = p.alvo === 'tela' ? Math.max(320, (typeof window !== 'undefined' ? window.innerWidth : 1400) - 296) : 200;
+  const lado = ladoEmPx({ medida: t.medida, tamanho: t.tamanho, porLinha: t.porLinha, areaLargura: area });
+  const q = med ? avaliarQualidade({ larguraImagem: med.largura, alturaImagem: med.altura, modo, unico: t.tamanhoUnico, lado: p.alvo === 'tela' ? lado : Math.min(lado, 200), areaLargura: p.alvo === 'tela' ? AREA_REFERENCIA.largura : 232, areaAltura: p.alvo === 'tela' ? AREA_REFERENCIA.altura : 700 }) : null;
+  // Para a imagem não desfocar, o tamanho máximo acompanha a resolução dela.
+  const maxTamanho = q ? Math.min(400, Math.max(60, Math.floor(q.maxLado / 20) * 20)) : 400;
+  const minPorLinha = q ? Math.min(12, Math.max(1, Math.ceil(area / q.maxLado))) : 1;
   return (
-    <>
+    <div style={{ marginTop: 8 }}>
       <div className="linha">
-        <button className="pilula" aria-pressed={p.modo === 'unica'} onClick={() => p.aoModo('unica')}>Uma imagem só</button>
-        <button className="pilula" aria-pressed={p.modo === 'repetida'} onClick={() => p.aoModo('repetida')}>Imagem repetida</button>
+        <button className="pilula" aria-pressed={modo === 'unica'} onClick={() => mudarModo('unica')}>Uma imagem só</button>
+        <button className="pilula" aria-pressed={modo === 'repetida'} onClick={() => mudarModo('repetida')}>Imagem repetida</button>
       </div>
-      {p.modo === 'repetida' && p.aoTamanho && (
-        <Campo rotulo={`Tamanho de cada repetição (tela e menu): ${p.tamanho}px`}>
-          <input type="range" min={60} max={400} step={20} value={p.tamanho} onChange={(e) => p.aoTamanho!(Number(e.target.value))} />
+      {modo === 'unica' ? (
+        <Campo rotulo={`Tamanho da imagem: ${t.tamanhoUnico >= 100 ? 'cobrindo tudo' : `${t.tamanhoUnico}% da largura`}`}>
+          <input type="range" min={20} max={100} step={5} value={t.tamanhoUnico} onChange={(e) => setT({ ...t, tamanhoUnico: Number(e.target.value) })} />
+          <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 400 }}>
+            100% cobre toda a área. Menos que isso mostra a imagem menor, no alto e ao centro.{q && q.maxPorcentagem < 100 ? ` Para esta imagem, até ${q.maxPorcentagem}% sem perder nitidez.` : ''}
+          </span>
         </Campo>
+      ) : (
+        <>
+          <h4 style={{ margin: '10px 0 4px' }}>Como se repete</h4>
+          <div className="linha">
+            {DISPOSICOES.map(([v, n]) => <button key={v} className="pilula" aria-pressed={t.disposicao === v} onClick={() => setT({ ...t, disposicao: v })}>{n}</button>)}
+          </div>
+          <div className="linha" style={{ marginTop: 8 }}>
+            {MEDIDAS.map(([v, n]) => <button key={v} className="pilula" aria-pressed={t.medida === v} onClick={() => setT({ ...t, medida: v })}>{n}</button>)}
+          </div>
+          {t.medida === 'tamanho' ? (
+            <Campo rotulo={`Tamanho de cada imagem: ${Math.min(t.tamanho, maxTamanho)}px${q && maxTamanho < 400 ? ` (máximo para esta imagem: ${maxTamanho}px)` : ''}`}>
+              <input type="range" min={60} max={maxTamanho} step={20} value={Math.min(t.tamanho, maxTamanho)} onChange={(e) => setT({ ...t, tamanho: Number(e.target.value) })} />
+            </Campo>
+          ) : (
+            <Campo rotulo={`Imagens em cada linha: ${Math.max(t.porLinha, minPorLinha)}${minPorLinha > 1 ? ` (mínimo para esta imagem: ${minPorLinha})` : ''}`}>
+              <input type="range" min={minPorLinha} max={12} step={1} value={Math.max(t.porLinha, minPorLinha)} onChange={(e) => setT({ ...t, porLinha: Number(e.target.value) })} />
+            </Campo>
+          )}
+          <Campo rotulo={`${t.disposicao === 'aleatoria' ? 'Espaço extra entre as imagens' : 'Espaço entre as imagens'}: ${t.espaco}px`}>
+            <input type="range" min={0} max={120} step={5} value={t.espaco} onChange={(e) => setT({ ...t, espaco: Number(e.target.value) })} />
+          </Campo>
+          {t.disposicao === 'aleatoria' && <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>Espalhada: as imagens ficam em posições variadas e levemente giradas, sempre do mesmo jeito.</span>}
+        </>
       )}
-    </>
+      {med && q && (
+        <p className={q.nivel === 'baixa' ? 'aviso' : 'suave'} role="status" style={{ fontSize: 'calc(13px * var(--escala, 1))', marginTop: 8 }}>
+          {q.nivel === 'baixa'
+            ? <>⚠️ Qualidade: esta imagem tem {med.largura}×{med.altura} px e seria esticada para ~{q.larguraMostrada} px, então pode ficar desfocada. {modo === 'unica' ? (q.maxPorcentagem < 100 ? `Reduza para até ${q.maxPorcentagem}% ou envie uma imagem com pelo menos ${LARGURA_RECOMENDADA_UNICA} px de largura.` : `Envie uma imagem com pelo menos ${LARGURA_RECOMENDADA_UNICA} px de largura.`) : `Diminua o tamanho (máximo recomendado ${q.maxLado} px) ou envie uma imagem maior.`}</>
+            : q.nivel === 'boa'
+              ? <>Qualidade boa: nítida na maioria das telas; em telas de alta resolução pode ficar um pouco suave.</>
+              : <>Qualidade ótima: nítida até em telas de alta resolução.</>}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -149,8 +211,8 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
       <h3 style={{ margin: '14px 0 6px' }}>Fundo da tela</h3>
       <SeletorImagem rotulo="imagem de fundo" imagem={t.imagem} aoMudar={(imagem) => setT({ ...t, imagem })} aoErro={setErro} />
       {t.imagem ? (
-        <div style={{ marginTop: 8 }}>
-          <ModoDaImagem modo={t.modoImagem} aoModo={(modoImagem) => setT({ ...t, modoImagem })} tamanho={t.tamanho} aoTamanho={(tamanho) => setT({ ...t, tamanho })} />
+        <div>
+          <OpcoesDaImagem t={t} setT={setT} alvo="tela" imagem={t.imagem} />
           <Campo rotulo={`Suavidade da imagem: ${t.veu}%`}>
             <input type="range" min={40} max={95} step={5} value={t.veu} onChange={(e) => setT({ ...t, veu: Number(e.target.value) })} />
             <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 400 }}>Mais alto deixa a imagem mais clara e o texto mais fácil de ler.</span>
@@ -187,12 +249,13 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
       {t.menuImagem === 'propria' && !t.menuImagemPropria && <p className="suave" style={{ fontSize: 13 }}>Envie uma imagem para ver o fundo do menu.</p>}
       {t.menuImagem === 'mesma' && !t.imagem && temFundo && <p className="suave" style={{ fontSize: 13 }}>Sem imagem, o menu repete o mesmo desenho da tela, no mesmo tamanho.</p>}
       {(t.menuImagem === 'propria' ? !!t.menuImagemPropria : t.menuImagem === 'mesma' && !!t.imagem) && (
-        <div style={{ marginTop: 8 }}>
-          <ModoDaImagem modo={t.menuModo} aoModo={(menuModo) => setT({ ...t, menuModo })} tamanho={t.tamanho} aoTamanho={(tamanho) => setT({ ...t, tamanho })} />
+        <div>
+          <OpcoesDaImagem t={t} setT={setT} alvo="menu" imagem={t.menuImagem === 'propria' ? t.menuImagemPropria : t.imagem} />
           <Campo rotulo={`Suavidade no menu: ${t.menuVeu}%`}>
             <input type="range" min={30} max={95} step={5} value={t.menuVeu} onChange={(e) => setT({ ...t, menuVeu: Number(e.target.value) })} />
             <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 400 }}>Mais alto deixa a cor do menu mais forte e as letras mais fáceis de ler.</span>
           </Campo>
+          <p className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', margin: '4px 0 0' }}>O espaçamento e a forma de repetir são os mesmos da tela.</p>
         </div>
       )}
 

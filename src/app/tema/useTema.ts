@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { liveQuery } from 'dexie';
 import { db, type PreferenciasRegistro } from '../../dados/db.ts';
 import { hojeLocal } from '../../dados/pedidos.ts';
-import { fundosDoTema, resolverTema, type TemaPersonalizado, type TemaResolvido } from '../../dominio/temas.ts';
-import { useUrlsDoTema } from './fundos.ts';
+import { resolverTema, type TemaPersonalizado, type TemaResolvido } from '../../dominio/temas.ts';
+import { useFundosDoTema } from './fundos.ts';
 import {
   FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PREFERENCIAS_PADRAO, achar, remotoMaisNovo, urlDasFontes, variaveis, type Preferencias,
 } from './tema.ts';
@@ -66,13 +66,13 @@ export function useTema(): [Preferencias, (p: Preferencias) => void, TemaResolvi
   );
 
   // Fundo da tela e do menu lateral (imagem única ou repetida, ou só o desenho do tema).
-  const urls = useUrlsDoTema(tema);
+  const fundos = useFundosDoTema(tema);
   useEffect(() => {
     const raiz = document.documentElement.style;
     const chaves = ['fundo', 'menu'].flatMap((n) => ['camadas', 'tamanho', 'repeticao', 'fixacao'].map((k) => `--${n}-${k}`));
     const limpar = () => chaves.forEach((k) => raiz.removeProperty(k));
     if (!tema) return limpar();
-    const f = fundosDoTema(tema, urls);
+    const f = fundos;
     for (const [nome, c] of [['fundo', f.conteudo], ['menu', f.menu]] as const) {
       if (!c) {
         ['camadas', 'tamanho', 'repeticao', 'fixacao'].forEach((k) => raiz.removeProperty(`--${nome}-${k}`));
@@ -84,7 +84,7 @@ export function useTema(): [Preferencias, (p: Preferencias) => void, TemaResolvi
       raiz.setProperty(`--${nome}-fixacao`, c.fixacao);
     }
     return limpar;
-  }, [tema, urls]);
+  }, [tema, fundos]);
 
   useEffect(() => {
     const v = variaveis(prefs, sistemaEscuro, tema?.cores ?? null);
