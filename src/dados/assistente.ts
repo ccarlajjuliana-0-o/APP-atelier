@@ -63,7 +63,7 @@ export async function perguntar(historico: Mensagem[]): Promise<string> {
   if (!nuvem) throw new Error('O assistente precisa da nuvem ligada (Supabase).');
   const mensagens = limitarMensagens(historico);
   const contexto = montarContexto(await montarSnapshot());
-  const { data, error } = await nuvem.functions.invoke('assistente', { body: { mensagens, contexto } });
+  const { data, error } = await nuvem.functions.invoke('Assistente', { body: { mensagens, contexto } });
   if (error) {
     // Erros da função chegam com o texto no corpo da resposta.
     let detalhe = '';
