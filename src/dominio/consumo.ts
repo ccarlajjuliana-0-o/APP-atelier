@@ -26,3 +26,11 @@ export function diasRestantes(disponivel: number, ritmo: number): number | null 
   if (!(ritmo > 0)) return null;
   return Math.max(0, Math.floor(Math.max(0, disponivel) / ritmo));
 }
+
+/** Quantos dias diferentes têm baixas. */
+export function diasComBaixa(baixas: Baixa[]): number {
+  return new Set(baixas.map((b) => b.criadoEm.slice(0, 10))).size;
+}
+
+/** Mínimo de dias com consumo para a previsão de duração valer a pena mostrar. */
+export const MIN_DIAS_COM_BAIXA = 3;

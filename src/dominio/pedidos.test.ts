@@ -4,7 +4,7 @@ import {
   totalCentavos, entradaCentavos, situacaoPagamento, necessidades, atrasado, prazoPadraoDias, dataPrometida,
   podeCancelar, AVANCO, dataParaTexto, type ItemPedido,
 } from './pedidos.ts';
-import { ritmoPorDia, diasRestantes } from './consumo.ts';
+import { ritmoPorDia, diasRestantes, diasComBaixa, MIN_DIAS_COM_BAIXA } from './consumo.ts';
 import type { ItemProduto } from './produtos.ts';
 
 const item = (o: Partial<ItemPedido>): ItemPedido => ({
@@ -97,4 +97,11 @@ test('ritmo de consumo e dias restantes', () => {
   assert.equal(ritmoPorDia([{ quantidade: 140, criadoEm: '2026-11-11T08:00:00Z' }], agora), 10);
   // fora da janela não conta
   assert.equal(ritmoPorDia([{ quantidade: 500, criadoEm: '2026-01-01T12:00:00Z' }], agora), 0);
+});
+
+test('previsão de duração só com histórico suficiente', () => {
+  const b = (d: string) => ({ quantidade: 10, criadoEm: `${d}T12:00:00Z` });
+  assert.equal(MIN_DIAS_COM_BAIXA, 3);
+  assert.equal(diasComBaixa([b('2026-11-01'), b('2026-11-01')]), 1);
+  assert.equal(diasComBaixa([b('2026-11-01'), b('2026-11-05'), b('2026-11-09')]), 3);
 });

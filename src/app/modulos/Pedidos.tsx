@@ -140,7 +140,12 @@ export function Pedidos() {
                       {p.dataPrometida ? dataParaTexto(p.dataPrometida) : <span className="suave">após confirmar</span>}
                       {atraso && <div style={{ fontSize: 12, fontWeight: 700 }}>atrasado</div>}
                     </td>
-                    <td>{p.status === 'cancelado' ? '—' : TEXTO_PAGAMENTO[situacaoPagamento(total, p.pagamentos)]}</td>
+                    <td>
+                      {p.status === 'cancelado' ? '—' : TEXTO_PAGAMENTO[situacaoPagamento(total, p.pagamentos)]}
+                      {(p.status === 'pronto' || p.status === 'entregue') && pagoCentavos(p.pagamentos) < total && (
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>falta receber {centavosParaTexto(total - pagoCentavos(p.pagamentos))}</div>
+                      )}
+                    </td>
                     <td><div className="linha" style={{ justifyContent: 'flex-end' }}><button className="btn" onClick={() => setAberto(p)}>Abrir</button></div></td>
                   </tr>
                 );
@@ -194,6 +199,7 @@ function Detalhe(p: {
   );
   const [erro, setErro] = useState('');
   const [cancelando, setCancelando] = useState(false);
+  const [confirmaEntrega, setConfirmaEntrega] = useState(false);
   const [valorPag, setValorPag] = useState('');
   const [obsPag, setObsPag] = useState('');
 
@@ -282,6 +288,10 @@ function Detalhe(p: {
   }
 
   async function aoAvancar() {
+    if (ini.status === 'pronto' && pago < total && !confirmaEntrega) {
+      setConfirmaEntrega(true);
+      return;
+    }
     const s = await salvar();
     if (!s) return;
     try {
@@ -313,6 +323,7 @@ function Detalhe(p: {
     const novo = await registrarPagamento(ini.id, { data: hojeLocal(), valorCentavos: Math.round(v * 100), observacao: obsPag.trim() });
     setValorPag('');
     setObsPag('');
+    setConfirmaEntrega(false);
     await p.aoMudar(`Pagamento de ${centavosParaTexto(Math.round(v * 100))} registrado no pedido #${novo.numero}.`, novo);
   }
 
@@ -498,11 +509,18 @@ function Detalhe(p: {
       )}
 
       {erro && <p className="aviso" style={{ marginTop: 10 }}>{erro}</p>}
+      {confirmaEntrega && ini.status === 'pronto' && (
+        <p className="aviso" style={{ marginTop: 10 }}>
+          Ainda falta receber {centavosParaTexto(total - pago)} deste pedido. Se entregar agora, ele continua aparecendo com “falta receber” na lista. Clique em “Entregar mesmo assim” para seguir, ou registre o pagamento antes.
+        </p>
+      )}
 
       <div className="linha" style={{ marginTop: 16 }}>
         {!bloqueado && <button className="btn" onClick={() => void aoSalvar()}>Salvar</button>}
         {avanco && (
-          <button className="btn primario" disabled={ini.status === 'orcamento' && itens.length === 0} onClick={() => void aoAvancar()}>{avanco.botao}</button>
+          <button className="btn primario" disabled={ini.status === 'orcamento' && itens.length === 0} onClick={() => void aoAvancar()}>
+            {confirmaEntrega && ini.status === 'pronto' ? 'Entregar mesmo assim' : avanco.botao}
+          </button>
         )}
         <button className="btn" onClick={p.fechar}>Fechar</button>
         {ini.id && podeCancelar(ini.status) && (

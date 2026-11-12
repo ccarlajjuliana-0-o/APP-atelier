@@ -1,7 +1,7 @@
 import { db, novoId, type Cliente, type Pedido, type MovimentacaoRegistro } from './db.ts';
 import { saldoDisponivel } from '../dominio/estoque.ts';
 import { dataPrometida, necessidades, totalCentavos, type Pagamento, type StatusPedido } from '../dominio/pedidos.ts';
-import { diasRestantes, ritmoPorDia } from '../dominio/consumo.ts';
+import { MIN_DIAS_COM_BAIXA, diasComBaixa, diasRestantes, ritmoPorDia } from '../dominio/consumo.ts';
 
 /** Data de hoje no fuso do aparelho, no formato AAAA-MM-DD. */
 export function hojeLocal(): string {
@@ -173,14 +173,14 @@ export interface Duracao {
   acabaEm: string | null; // AAAA-MM-DD
 }
 
-/** Quanto tempo cada material dura no ritmo dos últimos 90 dias (só materiais com baixas). */
+/** Quanto tempo cada material dura no ritmo dos últimos 90 dias (só com baixas em 3 dias diferentes ou mais). */
 export async function duracaoDosMateriais(): Promise<Record<string, Duracao>> {
   const agora = new Date();
   const por = agrupar(await db.movimentacoes.toArray());
   const out: Record<string, Duracao> = {};
   for (const [id, lista] of Object.entries(por)) {
     const baixas = lista.filter((m) => m.tipo === 'baixa');
-    if (baixas.length === 0) continue;
+    if (diasComBaixa(baixas) < MIN_DIAS_COM_BAIXA) continue; // pouco histórico: não estima
     const ritmo = ritmoPorDia(baixas, agora);
     const dias = diasRestantes(saldoDisponivel(lista), ritmo);
     let acabaEm: string | null = null;
