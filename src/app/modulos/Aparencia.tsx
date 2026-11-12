@@ -3,10 +3,11 @@ import { prepararLogo } from '../../dados/imagem.ts';
 import { salvarLogo } from '../../dados/temas.ts';
 import { useLogo } from '../componentes/Logo.tsx';
 import {
-  ESCALA_MAX, ESCALA_MIN, TEXTO_MINIMO, FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, contraste, escalaDe, urlDasFontes, variaveis, type Fonte, type Modo, type Preferencias,
+  ESCALA_MAX, ESCALA_MIN, TEXTO_MINIMO, fundoDaPaleta, modoEfetivo, FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, contraste, escalaDe, urlDasFontes, variaveis, type Fonte, type Modo, type Preferencias,
 } from '../tema/tema.ts';
 import { carregarFontes } from '../tema/fontes.ts';
 import { Escolha } from '../componentes/Escolha.tsx';
+import { SeletorCor } from '../componentes/SeletorCor.tsx';
 
 const MODOS: { id: Modo; nome: string }[] = [
   { id: 'claro', nome: 'Claro' },
@@ -78,6 +79,8 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
   const atuais = variaveis(prefs, window.matchMedia('(prefers-color-scheme: dark)').matches);
   const escala = escalaDe(prefs);
   const legivel = contraste(atuais['--texto'], atuais['--fundo']) >= 4.5;
+  const sistemaEscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const escuroAgora = modoEfetivo(prefs.modo, sistemaEscuro) === 'escuro';
   const textoRecusado = !!prefs.textoLivre && contraste(prefs.textoLivre, atuais['--fundo']) < TEXTO_MINIMO;
   const mudarEscala = (n: number) => aoMudar({ ...prefs, escalaFonte: Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, n)) });
 
@@ -96,12 +99,12 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
           <h2>Modo</h2>
           <div className="linha">
             {MODOS.map((m) => (
-              <button key={m.id} className="pilula" aria-pressed={prefs.modo === m.id} onClick={() => aoMudar({ ...prefs, modo: m.id })}>
+              <button key={m.id} className="pilula" aria-pressed={prefs.modo === m.id} onClick={() => aoMudar({ ...prefs, modo: m.id, fundoLivre: undefined, textoLivre: undefined })}>
                 {m.nome}
               </button>
             ))}
           </div>
-          <p className="suave">Automático segue o modo do aparelho.</p>
+          <p className="suave">Automático segue o modo do aparelho. Ao trocar de modo, o fundo e o texto voltam ao padrão dele.</p>
         </section>
         <section className="cartao">
           <h2>Prévia</h2>
@@ -122,24 +125,29 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
           <Escolha
             rotulo="Paleta"
             valor={paleta.id}
-            aoEscolher={(id) => aoMudar({ ...prefs, paletaId: id, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}
-            opcoes={PALETAS.map((p) => ({ id: p.id, rotulo: <><Bolinha cor={p.principal} /><Bolinha cor={p.apoio} /><Bolinha cor={p.menu} /><span>{p.nome}</span></> }))}
+            aoEscolher={(id) => aoMudar({ ...prefs, paletaId: id, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined, fundoLivre: undefined, textoLivre: undefined })}
+            opcoes={PALETAS.map((p) => ({ id: p.id, rotulo: <><Bolinha cor={p.principal} /><Bolinha cor={p.apoio} /><Bolinha cor={p.menu} /><Bolinha cor={fundoDaPaleta(p, escuroAgora)} /><span>{p.nome}</span></> }))}
           />
-          <div className="linha" style={{ marginTop: 12, gap: 10 }}>
-            <label>Cor do plano de fundo{' '}<input type="color" value={atuais['--fundo']} onChange={(e) => aoMudar({ ...prefs, fundoLivre: e.target.value })} /></label>
-            {prefs.fundoLivre && <button className="btn" onClick={() => aoMudar({ ...prefs, fundoLivre: undefined })}>Padrão do modo</button>}
-          </div>
-          <p className="suave" style={{ margin: '4px 0 0', fontSize: 13 }}>É o fundo das telas, nos modos claro e escuro. O texto troca sozinho entre claro e escuro para continuar legível, a menos que você escolha a cor dele em Fontes.</p>
+          <p className="suave" style={{ margin: '6px 0 0', fontSize: 13 }}>Cada paleta tem 4 cores: destaque, detalhes, menu lateral e plano de fundo.</p>
           <details className="recolhivel" style={{ marginTop: 10 }}>
             <summary>Ou escolher minhas cores</summary>
-            <div className="linha" style={{ gap: 18, marginTop: 6 }}>
-              <label>Botões e destaques{' '}<input type="color" value={prefs.principalLivre ?? paleta.principal} onChange={(e) => aoMudar({ ...prefs, principalLivre: e.target.value })} /></label>
-              <label>Detalhes suaves{' '}<input type="color" value={prefs.apoioLivre ?? paleta.apoio} onChange={(e) => aoMudar({ ...prefs, apoioLivre: e.target.value })} /></label>
-              <label>Menu lateral{' '}<input type="color" value={prefs.menuLivre ?? paleta.menu} onChange={(e) => aoMudar({ ...prefs, menuLivre: e.target.value })} /></label>
-              <button className="btn" onClick={() => aoMudar({ ...prefs, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}>Voltar às cores da paleta</button>
+            <div className="cores-livres">
+              <div className="item"><SeletorCor rotulo="Botões e destaques" valor={prefs.principalLivre ?? atuais['--principal']} aoMudar={(c) => aoMudar({ ...prefs, principalLivre: c })} />Botões e destaques</div>
+              <div className="item"><SeletorCor rotulo="Detalhes suaves" valor={prefs.apoioLivre ?? paleta.apoio} aoMudar={(c) => aoMudar({ ...prefs, apoioLivre: c })} />Detalhes suaves</div>
+              <div className="item"><SeletorCor rotulo="Menu lateral" valor={prefs.menuLivre ?? atuais['--menu']} aoMudar={(c) => aoMudar({ ...prefs, menuLivre: c })} />Menu lateral</div>
+              <div className="item"><SeletorCor rotulo="Plano de fundo" valor={atuais['--fundo']} aoMudar={(c) => aoMudar({ ...prefs, fundoLivre: c })} />Plano de fundo</div>
+              <div className="item"><SeletorCor rotulo="Cor do texto" valor={atuais['--texto']} aoMudar={(c) => aoMudar({ ...prefs, textoLivre: c })} />Cor do texto</div>
+            </div>
+            {textoRecusado ? (
+              <p className="aviso" role="status" style={{ marginTop: 10 }}>Essa cor de texto ficaria quase invisível sobre o fundo, então o app usou a cor automática. Escolha uma cor mais clara ou mais escura que o fundo.</p>
+            ) : !legivel && (
+              <p className="aviso" role="status" style={{ marginTop: 10 }}>Essa combinação de texto e fundo está difícil de ler. Tente uma cor de texto mais clara ou mais escura.</p>
+            )}
+            <div style={{ marginTop: 10 }}>
+              <button className="btn pequeno" onClick={() => aoMudar({ ...prefs, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined, fundoLivre: undefined, textoLivre: undefined })}>Restaurar</button>
             </div>
           </details>
-          <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>O texto sobre as cores troca sozinho entre claro e escuro para manter a leitura. No modo escuro, o menu fica escuro, a menos que você escolha uma cor para ele.</p>
+          <p className="suave" style={{ fontSize: 13 }}>O texto sobre as cores troca sozinho entre claro e escuro para manter a leitura. No modo escuro, o menu fica escuro, a menos que você escolha uma cor para ele.</p>
         </section>
         <section className="cartao" style={{ marginTop: 0 }}>
           <h2>Fontes</h2>
@@ -148,15 +156,6 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
             <EscolhaDeFonte titulo="Texto" fontes={FONTES_CORPO} escolhida={prefs.fonteCorpo} amostra="Cada detalhe feito à mão" tamanho={16} aoEscolher={(id) => aoMudar({ ...prefs, fonteCorpo: id })} />
             <EscolhaDeFonte titulo="Cursiva (nome do atelier no menu)" fontes={FONTES_SCRIPT} escolhida={prefs.fonteScript} amostra="Craft Notes Unique" tamanho={26} aoEscolher={(id) => aoMudar({ ...prefs, fonteScript: id })} />
           </div>
-          <div className="linha" style={{ marginTop: 14, gap: 10 }}>
-            <label>Cor do texto{' '}<input type="color" value={atuais['--texto']} onChange={(e) => aoMudar({ ...prefs, textoLivre: e.target.value })} /></label>
-            {prefs.textoLivre && <button className="btn" onClick={() => aoMudar({ ...prefs, textoLivre: undefined })}>Padrão</button>}
-          </div>
-          {textoRecusado ? (
-            <p className="aviso" role="status">Essa cor de texto ficaria quase invisível sobre o fundo, então o app usou a cor automática. Escolha uma cor mais clara ou mais escura que o fundo. <button className="btn" style={{ minHeight: 32 }} onClick={() => aoMudar({ ...prefs, textoLivre: undefined })}>Voltar ao automático</button></p>
-          ) : !legivel && (
-            <p className="aviso" role="status">Essa combinação de texto e fundo está difícil de ler. Tente uma cor de texto mais clara ou mais escura. <button className="btn" style={{ minHeight: 32 }} onClick={() => aoMudar({ ...prefs, textoLivre: undefined })}>Texto automático</button></p>
-          )}
           <div style={{ marginTop: 14 }}>
             <span className="escolha-rotulo">Tamanho das letras: {escala}%</span>
             <div className="linha" style={{ gap: 8, marginTop: 4 }}>

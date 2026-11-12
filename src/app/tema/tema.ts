@@ -9,10 +9,12 @@ export interface Paleta {
   principalEscuro: string; // versão para o modo escuro
   apoio: string; // fundos suaves e etiquetas
   menu: string; // fundo do menu lateral (modo claro)
+  fundo?: string; // plano de fundo no modo claro (se faltar, sai de uma mistura do creme com o apoio)
+  fundoEscuro?: string; // plano de fundo no modo escuro (se faltar, sai de uma mistura do escuro com a cor principal)
 }
 
 export const PALETAS: Paleta[] = [
-  { id: 'marca', nome: 'Lavanda e azul pervinca (marca)', principal: '#9168A0', principalEscuro: '#C398C8', apoio: '#92A8D1', menu: '#4A4E79' },
+  { id: 'marca', nome: 'Lavanda e azul pervinca (marca)', principal: '#9168A0', principalEscuro: '#C398C8', apoio: '#92A8D1', menu: '#4A4E79', fundo: '#FBF7F4', fundoEscuro: '#1E1726' },
   { id: 'rosa', nome: 'Lilás suave e rosa', principal: '#8A5BB0', principalEscuro: '#B48AD8', apoio: '#F3D9EC', menu: '#4A4E79' },
   { id: 'menta', nome: 'Azul e verde menta', principal: '#2F6DB3', principalEscuro: '#6FA8E8', apoio: '#D3F0E4', menu: '#4A4E79' },
   { id: 'sakura', nome: 'Sakura (rosa cerejeira)', principal: '#B65C85', principalEscuro: '#E7A6BE', apoio: '#F1CDD9', menu: '#5A3A52' },
@@ -23,6 +25,14 @@ export const PALETAS: Paleta[] = [
   { id: 'pessego', nome: 'Pêssego (coral suave)', principal: '#C0605A', principalEscuro: '#EFA59F', apoio: '#F9D9CF', menu: '#5E3A3A' },
   { id: 'grafite', nome: 'Grafite (neutro)', principal: '#5B6275', principalEscuro: '#A9B1C7', apoio: '#DDE1EA', menu: '#2B2F3C' },
 ];
+
+const FUNDO_CLARO = '#FBF7F4';
+const FUNDO_ESCURO = '#1E1726';
+
+/** Plano de fundo que combina com a paleta, para o modo claro ou escuro. */
+export function fundoDaPaleta(p: Paleta, escuro: boolean): string {
+  return escuro ? p.fundoEscuro ?? misturar(FUNDO_ESCURO, p.principalEscuro, 0.1) : p.fundo ?? misturar(FUNDO_CLARO, p.apoio, 0.28);
+}
 
 // ---------- fontes ----------
 
@@ -163,12 +173,14 @@ export function variaveis(p: Preferencias, sistemaEscuro: boolean, tema?: CoresD
     neutro: escuro ? '#33283F' : '#F7E5E7',
   };
   // Fundo e/ou texto escolhidos por você: o resto (cartões, linhas, texto suave) se ajusta a eles.
-  const fundoEscolhido = p.fundoLivre;
+  // Sem tema festivo, o fundo acompanha a paleta (a da marca mantém o fundo original).
+  const fundoDePaleta = !tema && (escuro ? base.fundoEscuro : base.fundo) !== (escuro ? FUNDO_ESCURO : FUNDO_CLARO) ? fundoDaPaleta(base, escuro) : undefined;
+  const fundoEscolhido = p.fundoLivre ?? fundoDePaleta;
   // Um texto ilegível sobre o fundo (contraste < 3) não é aplicado, para a tela nunca "sumir".
   const textoEscolhido = p.textoLivre && contraste(p.textoLivre, fundoEscolhido ?? cor.fundo) >= TEXTO_MINIMO ? p.textoLivre : undefined;
   if (fundoEscolhido || textoEscolhido) {
     const fundo = fundoEscolhido ?? cor.fundo;
-    const texto = textoEscolhido ?? textoSobre(fundo);
+    const texto = textoEscolhido ?? (p.fundoLivre ? textoSobre(fundo) : cor.texto);
     const claro = luminancia(fundo) > 0.5;
     cor.fundo = fundo;
     cor.texto = texto;

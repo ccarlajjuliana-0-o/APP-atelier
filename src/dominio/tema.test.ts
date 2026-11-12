@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PALETAS, FONTES_CORPO, FONTES_TITULO, FONTES_SCRIPT, variaveis, contraste, textoSobre, urlDasFontes, achar, PREFERENCIAS_PADRAO, remotoMaisNovo } from '../app/tema/tema.ts';
+import { fundoDaPaleta, PALETAS, FONTES_CORPO, FONTES_TITULO, FONTES_SCRIPT, variaveis, contraste, textoSobre, urlDasFontes, achar, PREFERENCIAS_PADRAO, remotoMaisNovo } from '../app/tema/tema.ts';
 
 test('contraste: preto no branco é máximo e iguais é 1', () => {
   assert.ok(Math.abs(contraste('#000000', '#FFFFFF') - 21) < 0.01);
@@ -66,4 +66,18 @@ test('texto ilegível sobre o fundo é ignorado', () => {
   assert.ok(contraste(v['--texto'], v['--fundo']) >= 4.5);
   const w = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'claro', textoLivre: '#FBF7F4' }, false);
   assert.equal(w['--texto'], '#3E3550');
+});
+
+test('cada paleta tem fundo próprio legível nos dois modos; a da marca mantém o original', () => {
+  for (const p of PALETAS) {
+    for (const modo of ['claro', 'escuro'] as const) {
+      const v = variaveis({ ...PREFERENCIAS_PADRAO, paletaId: p.id, modo }, false);
+      assert.equal(v['--fundo'].toUpperCase(), fundoDaPaleta(p, modo === 'escuro').toUpperCase(), `${p.id} ${modo}`);
+      assert.ok(contraste(v['--texto'], v['--fundo']) >= 7, `${p.id} ${modo} texto/fundo`);
+      assert.ok(contraste(v['--texto'], v['--cartao']) >= 7, `${p.id} ${modo} texto/cartão`);
+    }
+  }
+  assert.equal(variaveis({ ...PREFERENCIAS_PADRAO, paletaId: 'marca', modo: 'claro' }, false)['--fundo'], '#FBF7F4');
+  assert.equal(variaveis({ ...PREFERENCIAS_PADRAO, paletaId: 'marca', modo: 'escuro' }, false)['--fundo'], '#1E1726');
+  assert.notEqual(fundoDaPaleta(PALETAS.find((x) => x.id === 'mel')!, false), '#FBF7F4');
 });

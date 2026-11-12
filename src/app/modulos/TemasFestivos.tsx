@@ -7,6 +7,7 @@ import {
   type AparenciaDoTema, type ImagemDoMenu, type Motivo, type TemaBase, type TemaPersonalizado, type TemaResolvido,
 } from '../../dominio/temas.ts';
 import { PreviaTema } from '../tema/PreviaTema.tsx';
+import { SeletorCor } from '../componentes/SeletorCor.tsx';
 import { dataParaTexto } from '../../dominio/pedidos.ts';
 import { hojeLocal } from '../../dados/pedidos.ts';
 import { Campo } from './FinanceiroCampos.tsx';
@@ -131,9 +132,9 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
 
       <h3 style={{ margin: '14px 0 6px' }}>Cores</h3>
       <div className="linha" style={{ gap: 18 }}>
-        <label>Botões e destaques <input type="color" value={t.cores.principal} onChange={(e) => setT({ ...t, cores: { ...t.cores, principal: e.target.value } })} /></label>
-        <label>Detalhes suaves <input type="color" value={t.cores.apoio} onChange={(e) => setT({ ...t, cores: { ...t.cores, apoio: e.target.value } })} /></label>
-        <label>Menu lateral <input type="color" value={t.cores.menu} onChange={(e) => setT({ ...t, cores: { ...t.cores, menu: e.target.value } })} /></label>
+        <div className="item"><SeletorCor rotulo="Botões e destaques" valor={t.cores.principal} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, principal: c } })} />Botões e destaques</div>
+        <div className="item"><SeletorCor rotulo="Detalhes suaves" valor={t.cores.apoio} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, apoio: c } })} />Detalhes suaves</div>
+        <div className="item"><SeletorCor rotulo="Menu lateral" valor={t.cores.menu} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, menu: c } })} />Menu lateral</div>
       </div>
 
       <h3 style={{ margin: '14px 0 6px' }}>Fundo da tela</h3>
@@ -153,7 +154,7 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
               {Object.entries(MOTIVOS).map(([k, n]) => <option key={k} value={k}>{n}</option>)}
             </select>
           </Campo>
-          <label>Cor do desenho <input type="color" value={t.corMotivo} onChange={(e) => setT({ ...t, corMotivo: e.target.value })} /></label>
+          <div className="item"><SeletorCor rotulo="Cor do desenho" valor={t.corMotivo} aoMudar={(c) => setT({ ...t, corMotivo: c })} />Cor do desenho</div>
         </div>
       )}
 
