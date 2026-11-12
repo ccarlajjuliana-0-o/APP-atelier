@@ -62,17 +62,17 @@ export function Precos({ irParaAjustes }: { irParaAjustes: () => void }) {
                       <div className="suave" style={{ fontSize: 12 }}>{LINHAS[p.linha]}</div>
                       {c.semCusto > 0 && <div className="suave" style={{ fontSize: 12 }}>faltam custos de {c.semCusto} material(is)</div>}
                     </td>
-                    <td>
+                    <td className="din">
                       {centavosParaTexto(r.custo)}
                       {r.maquina > 0 && <div className="suave" style={{ fontSize: 12 }}>máquina {centavosParaTexto(r.maquina)}</div>}
                     </td>
-                    <td>{p.precoCentavos !== null ? centavosParaTexto(p.precoCentavos) : '—'}</td>
-                    <td>
+                    <td className="din">{p.precoCentavos !== null ? centavosParaTexto(p.precoCentavos) : '—'}</td>
+                    <td className="din">
                       {r.lucroAtual !== null ? centavosParaTexto(r.lucroAtual) : '—'}
                       {r.margemAtualPct !== null && <div className="suave" style={{ fontSize: 12 }}>{r.margemAtualPct.toFixed(0)}% do preço</div>}
                     </td>
-                    <td>{r.horaAtual !== null ? centavosParaTexto(r.horaAtual) : p.tempoTrabalhoMin > 0 ? '—' : <span className="suave">sem tempo</span>}</td>
-                    {r.sugeridoPorCanal.map((v, k) => <td key={k}>{v !== null ? centavosParaTexto(v) : '—'}</td>)}
+                    <td className="din">{r.horaAtual !== null ? centavosParaTexto(r.horaAtual) : p.tempoTrabalhoMin > 0 ? '—' : <span className="suave">sem tempo</span>}</td>
+                    {r.sugeridoPorCanal.map((v, k) => <td key={k} className="din">{v !== null ? centavosParaTexto(v) : '—'}</td>)}
                   </tr>
                 );
               })}
