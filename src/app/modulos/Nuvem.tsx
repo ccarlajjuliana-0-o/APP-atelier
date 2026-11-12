@@ -52,7 +52,7 @@ export function Nuvem() {
       <div className="cartao">
         <h2>Como funciona</h2>
         <ul style={{ lineHeight: 1.7, margin: 0, paddingLeft: 18 }}>
-          <li>O app sincroniza sozinho ao abrir, uns 5 segundos depois de cada alteração, a cada 3 minutos e quando a internet volta.</li>
+          <li>O app sincroniza sozinho ao abrir, uns 15 segundos depois de cada alteração, a cada 3 minutos e quando a internet volta.</li>
           <li>Sem internet, tudo continua funcionando e sobe depois.</li>
           <li>Se o mesmo registro for alterado em dois aparelhos, vale a alteração mais recente. As movimentações de estoque (compras, reservas, baixas) nunca se perdem: as dos dois aparelhos são somadas.</li>
           <li>Entram na nuvem: materiais e estoque, produtos, fornecedores, clientes, pedidos, despesas e ajustes do financeiro, com as fotos. O mostruário já vem da nuvem pelo Estúdio de Miolos.</li>

@@ -41,6 +41,8 @@ async function textoParaBlob(t: string): Promise<Blob> {
   return (await fetch(t)).blob();
 }
 
+/** Quanto esperar depois de uma alteração antes de sincronizar (junta várias alterações seguidas). */
+const ESPERA_APOS_ALTERACAO_MS = 15_000;
 const TAMANHO_PAGINA = 40;
 const TAMANHO_LOTE = 25;
 
@@ -79,9 +81,10 @@ async function executar(): Promise<void> {
     const cursor = localStorage.getItem(chaveCursor) ?? '';
 
     // ajustes salvos antes da sincronização existir não têm data de alteração
-    await db.ajustes.toCollection().modify((a) => {
-      if (!a.atualizadoEm) a.atualizadoEm = new Date().toISOString();
-    });
+    const ajustesLocal = await db.ajustes.get('financeiro');
+    if (ajustesLocal && !ajustesLocal.atualizadoEm) {
+      await db.ajustes.update('financeiro', { atualizadoEm: new Date().toISOString() });
+    }
 
     // 1) receber o que mudou na nuvem
     const aplicados = new Set<string>();
@@ -179,14 +182,14 @@ function registrarGanchos() {
   db.ajustes.hook('updating', marcar);
 }
 
-/** Liga a sincronização automática: ao abrir, a cada poucos minutos, ao voltar a internet, ao voltar para a aba e ~5 s depois de cada alteração. */
+/** Liga a sincronização automática: ao abrir, a cada poucos minutos, ao voltar a internet, ao voltar para a aba e ~15 s depois de cada alteração. */
 export function iniciarSincronizacaoAutomatica(): () => void {
   if (!nuvem) return () => {};
   registrarGanchos();
   let espera: ReturnType<typeof setTimeout> | undefined;
   agendar = () => {
     clearTimeout(espera);
-    espera = setTimeout(() => void sincronizar(), 5000);
+    espera = setTimeout(() => void sincronizar(), ESPERA_APOS_ALTERACAO_MS);
   };
   const agora = () => void sincronizar();
   const aoVisivel = () => {
