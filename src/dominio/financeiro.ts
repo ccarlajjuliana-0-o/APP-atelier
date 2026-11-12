@@ -28,6 +28,7 @@ export interface Ajustes {
   maquina3dId: string | null; // máquina usada nas peças 3D
   maquinas: Maquina[];
   canais: Canal[];
+  atualizadoEm?: string; // usado na sincronização
 }
 
 export const AJUSTES_PADRAO: Ajustes = {

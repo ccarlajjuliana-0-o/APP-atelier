@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthGate } from './AuthGate.tsx';
 import { useTema } from './tema/useTema.ts';
 import { Inicio } from './modulos/Inicio.tsx';
@@ -14,8 +14,10 @@ import { Financeiro } from './modulos/Financeiro.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
+import { iniciarSincronizacaoAutomatica } from '../dados/sync.ts';
+import { Nuvem, EstadoNuvem } from './modulos/Nuvem.tsx';
 
-type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores' | 'pedidos' | 'clientes' | 'financeiro';
+type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores' | 'pedidos' | 'clientes' | 'financeiro' | 'nuvem';
 
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
@@ -29,10 +31,17 @@ const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'financeiro', nome: 'Financeiro' },
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
+  { id: 'nuvem', nome: 'Nuvem' },
   { id: 'aparencia', nome: 'Aparência e marca' },
 ];
 
 const EM_BREVE = ['Equipamentos', 'Divulgação', 'Assistente'];
+
+/** Liga a sincronização automática enquanto o app está aberto e logado. */
+function SincronizacaoAutomatica() {
+  useEffect(() => iniciarSincronizacaoAutomatica(), []);
+  return null;
+}
 
 export function App() {
   const [prefs, setPrefs] = useTema();
@@ -42,6 +51,7 @@ export function App() {
     <AuthGate>
       {(modoLocal) => (
         <div className="app">
+          {!modoLocal && <SincronizacaoAutomatica />}
           <nav className="menu" aria-label="Menu principal">
             <div className="marca">
               <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="Logomarca Craft Notes Unique" />
@@ -62,6 +72,7 @@ export function App() {
               </button>
             ))}
             <div className="espaco" />
+            <EstadoNuvem />
             {nuvem && (
               <button className="item" onClick={() => void sair()}>
                 Sair
@@ -84,6 +95,7 @@ export function App() {
             {tela === 'financeiro' && <Financeiro />}
             {tela === 'mostruario' && <Mostruario />}
             {tela === 'backup' && <Backup />}
+            {tela === 'nuvem' && <Nuvem />}
           </main>
         </div>
       )}

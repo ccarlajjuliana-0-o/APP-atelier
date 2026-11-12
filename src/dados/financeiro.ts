@@ -8,7 +8,7 @@ export async function carregarAjustes(): Promise<Ajustes> {
 }
 
 export async function salvarAjustes(a: Ajustes): Promise<void> {
-  await db.ajustes.put({ ...a, id: 'financeiro' });
+  await db.ajustes.put({ ...a, id: 'financeiro', atualizadoEm: new Date().toISOString() });
 }
 
 export async function listarDespesas(): Promise<Despesa[]> {
