@@ -1,9 +1,9 @@
 import { db, novoId } from './db.ts';
-import type { Equipamento } from '../dominio/equipamentos.ts';
+import { normalizarEquipamento, type Equipamento } from '../dominio/equipamentos.ts';
 
 export async function listarEquipamentos(): Promise<Equipamento[]> {
   const l = await db.equipamentos.toArray();
-  return l.map((e) => ({ ...e, ativo: e.ativo !== false })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return l.map((e) => normalizarEquipamento({ ...e, ativo: e.ativo !== false })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
 export async function salvarEquipamento(e: Equipamento): Promise<Equipamento> {
@@ -25,8 +25,9 @@ export async function registrarManutencao(
   custoCentavos: number,
 ): Promise<Equipamento> {
   return db.transaction('rw', [db.equipamentos, db.despesas], async () => {
-    const e = await db.equipamentos.get(equipamentoId);
-    if (!e) throw new Error('Equipamento não encontrado.');
+    const bruto = await db.equipamentos.get(equipamentoId);
+    if (!bruto) throw new Error('Equipamento não encontrado.');
+    const e = normalizarEquipamento(bruto);
     const agora = new Date().toISOString();
     const tarefas = e.tarefas.map((t) => (t.id === tarefaId && (!t.ultimaEm || data > t.ultimaEm) ? { ...t, ultimaEm: data } : t));
     const novo: Equipamento = {

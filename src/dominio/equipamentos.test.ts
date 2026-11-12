@@ -1,14 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  somarDias, diasEntre, proximaDaTarefa, situacaoDaTarefa, pendencias, textoDoPrazo, maquinaDoEquipamento,
+  normalizarEquipamento, custoDeUso, rotuloDaUnidade, somarDias, diasEntre, proximaDaTarefa, situacaoDaTarefa, pendencias, textoDoPrazo, maquinaDoEquipamento,
   comMaquinasDosEquipamentos, TAREFAS_SUGERIDAS, TIPOS_EQUIPAMENTO, type Equipamento,
 } from './equipamentos.ts';
 import { AJUSTES_PADRAO, precificar } from './financeiro.ts';
 
 const eq = (o: Partial<Equipamento>): Equipamento => ({
-  id: 'e1', nome: 'Impressora', tipo: 'impressora3d', modelo: '', dataCompra: '2026-01-10', valorCentavos: 300000, vidaUtilHoras: 3000,
-  potenciaW: 150, usarNoCusto: true, tarefas: [], historico: [], observacoes: '', ativo: true, atualizadoEm: '', ...o,
+  id: 'e1', nome: 'Impressora', tipo: 'impressora3d', modelo: '', dataCompra: '2026-01-10', valorCentavos: 300000, alimentacao: 'eletrico',
+  vidaUtil: 3000, vidaUtilUnidade: 'horas', vidaUtilRotulo: '', potenciaW: 150, usarNoCusto: true, tarefas: [], historico: [], observacoes: '', ativo: true, atualizadoEm: '', ...o,
 });
 
 test('datas: soma e diferença em dias', () => {
@@ -50,7 +50,9 @@ test('pendências ordenadas, sem equipamentos arquivados', () => {
 test('equipamento vira máquina do Financeiro só se marcado e com vida útil', () => {
   assert.equal(maquinaDoEquipamento(eq({}))?.id, 'e1');
   assert.equal(maquinaDoEquipamento(eq({ usarNoCusto: false })), null);
-  assert.equal(maquinaDoEquipamento(eq({ vidaUtilHoras: 0 })), null);
+  assert.equal(maquinaDoEquipamento(eq({ vidaUtil: 0 })), null);
+  assert.equal(maquinaDoEquipamento(eq({ vidaUtilUnidade: 'ciclos' })), null);
+  assert.equal(maquinaDoEquipamento(eq({ alimentacao: 'manual' }))?.potenciaW, 0);
   assert.equal(maquinaDoEquipamento(eq({ ativo: false })), null);
 });
 
@@ -65,4 +67,36 @@ test('o custo por hora do equipamento entra no preço das peças 3D', () => {
 
 test('sugestões existem para todos os tipos', () => {
   for (const t of Object.keys(TIPOS_EQUIPAMENTO) as (keyof typeof TIPOS_EQUIPAMENTO)[]) assert.ok(TAREFAS_SUGERIDAS[t].length > 0);
+});
+
+test('registros antigos ganham os campos novos', () => {
+  const antigo = { ...eq({}), vidaUtilHoras: 2000, potenciaW: 100 } as unknown as Equipamento;
+  delete (antigo as Partial<Equipamento>).vidaUtil;
+  delete (antigo as Partial<Equipamento>).alimentacao;
+  delete (antigo as Partial<Equipamento>).vidaUtilUnidade;
+  const n = normalizarEquipamento(antigo);
+  assert.equal(n.vidaUtil, 2000);
+  assert.equal(n.vidaUtilUnidade, 'horas');
+  assert.equal(n.alimentacao, 'eletrico');
+  const manual = normalizarEquipamento({ ...antigo, potenciaW: 0 } as Equipamento);
+  assert.equal(manual.alimentacao, 'manual');
+});
+
+test('custo de uso: horas com energia, ciclos e outra unidade só desgaste', () => {
+  const horas = custoDeUso(eq({}), 90);
+  assert.equal(horas?.por, 'hora');
+  assert.equal(horas?.centavos, 113.5); // 300000/3000 + 0,15 kW × 90
+  const manualHoras = custoDeUso(eq({ alimentacao: 'manual' }), 90);
+  assert.equal(manualHoras?.centavos, 100);
+  const ciclos = custoDeUso(eq({ alimentacao: 'manual', valorCentavos: 50000, vidaUtil: 10000, vidaUtilUnidade: 'ciclos' }), 90);
+  assert.equal(ciclos?.por, 'ciclo');
+  assert.equal(ciclos?.centavos, 5);
+  const outra = custoDeUso(eq({ alimentacao: 'manual', valorCentavos: 50000, vidaUtil: 5000, vidaUtilUnidade: 'outro', vidaUtilRotulo: 'furo' }), 90);
+  assert.equal(outra?.por, 'furo');
+  assert.equal(outra?.centavos, 10);
+  // energia só conta em horas
+  assert.equal(custoDeUso(eq({ vidaUtilUnidade: 'ciclos', vidaUtil: 3000 }), 90)?.centavos, 100);
+  assert.equal(custoDeUso(eq({ vidaUtil: 0 }), 90), null);
+  assert.equal(custoDeUso(eq({ valorCentavos: 0 }), 90), null);
+  assert.equal(rotuloDaUnidade({ vidaUtilUnidade: 'outro', vidaUtilRotulo: '' }), 'uso');
 });

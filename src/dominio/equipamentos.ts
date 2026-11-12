@@ -12,6 +12,12 @@ export const TIPOS_EQUIPAMENTO: Record<TipoEquipamento, string> = {
   outro: 'Outro',
 };
 
+export type Alimentacao = 'eletrico' | 'manual';
+export const ALIMENTACOES: Record<Alimentacao, string> = { eletrico: 'Elétrico', manual: 'Manual' };
+
+export type UnidadeVida = 'horas' | 'ciclos' | 'outro';
+export const UNIDADES_VIDA: Record<UnidadeVida, string> = { horas: 'Horas de uso', ciclos: 'Ciclos', outro: 'Outra unidade' };
+
 export interface Tarefa {
   id: string;
   descricao: string;
@@ -33,9 +39,12 @@ export interface Equipamento {
   modelo: string;
   dataCompra: string | null;
   valorCentavos: number;
-  vidaUtilHoras: number; // para o desgaste por hora (0 = não calcula)
-  potenciaW: number; // consumo médio, para a energia
-  usarNoCusto: boolean; // aparece como máquina no Financeiro (custo das peças 3D)
+  alimentacao: Alimentacao; // manual não gasta energia
+  vidaUtil: number; // quanto o equipamento aguenta, na unidade abaixo (0 = não calcula o desgaste)
+  vidaUtilUnidade: UnidadeVida;
+  vidaUtilRotulo: string; // nome da unidade quando for "outro", no singular (ex.: furo, folha, metro)
+  potenciaW: number; // consumo médio em watts (só elétrico)
+  usarNoCusto: boolean; // aparece como máquina no Financeiro (custo das peças 3D; só com vida útil em horas)
   tarefas: Tarefa[];
   historico: RegistroManutencao[];
   fotos?: Blob[];
@@ -133,12 +142,53 @@ export function textoDoPrazo(dias: number): string {
   return `vence em ${dias} dias`;
 }
 
+// ---------- registros antigos e custo de uso ----------
+
+/** Completa os campos novos de registros guardados antes deles existirem (aqui ou vindos da nuvem). */
+export function normalizarEquipamento(e: Equipamento): Equipamento {
+  const legado = e as unknown as { vidaUtilHoras?: number };
+  const potencia = e.potenciaW ?? 0;
+  return {
+    ...e,
+    potenciaW: potencia,
+    alimentacao: e.alimentacao ?? (potencia > 0 ? 'eletrico' : 'manual'),
+    vidaUtil: e.vidaUtil ?? legado.vidaUtilHoras ?? 0,
+    vidaUtilUnidade: e.vidaUtilUnidade ?? 'horas',
+    vidaUtilRotulo: e.vidaUtilRotulo ?? '',
+    tarefas: e.tarefas ?? [],
+    historico: e.historico ?? [],
+  };
+}
+
+/** Como o texto chama a unidade da vida útil ("horas", "ciclos" ou o nome que você deu). */
+export function rotuloDaUnidade(e: Pick<Equipamento, 'vidaUtilUnidade' | 'vidaUtilRotulo'>): string {
+  if (e.vidaUtilUnidade === 'horas') return 'hora';
+  if (e.vidaUtilUnidade === 'ciclos') return 'ciclo';
+  return e.vidaUtilRotulo.trim() || 'uso';
+}
+
+export interface CustoDeUso {
+  centavos: number; // com fração
+  por: string; // 'hora', 'ciclo' ou o nome da unidade
+}
+
+/**
+ * Quanto custa cada unidade de uso: o valor pago dividido pela vida útil.
+ * Em horas, soma a energia se o equipamento for elétrico. Devolve null se faltar valor ou vida útil.
+ */
+export function custoDeUso(e: Equipamento, kwhCentavos: number): CustoDeUso | null {
+  if (!(e.vidaUtil > 0) || !(e.valorCentavos > 0)) return null;
+  const desgaste = e.valorCentavos / e.vidaUtil;
+  const energia = e.vidaUtilUnidade === 'horas' && e.alimentacao === 'eletrico' ? (Math.max(0, e.potenciaW) / 1000) * Math.max(0, kwhCentavos) : 0;
+  return { centavos: desgaste + energia, por: rotuloDaUnidade(e) };
+}
+
 // ---------- ligação com o Financeiro ----------
 
-/** O equipamento vira uma máquina do Financeiro se estiver marcado e tiver vida útil. */
+/** O equipamento vira uma máquina do Financeiro se estiver marcado e tiver vida útil em horas (o preço das peças 3D usa o tempo de impressão). */
 export function maquinaDoEquipamento(e: Equipamento): Maquina | null {
-  if (!e.ativo || !e.usarNoCusto || !(e.vidaUtilHoras > 0)) return null;
-  return { id: e.id, nome: e.nome, valorCentavos: e.valorCentavos, vidaUtilHoras: e.vidaUtilHoras, potenciaW: e.potenciaW };
+  if (!e.ativo || !e.usarNoCusto || e.vidaUtilUnidade !== 'horas' || !(e.vidaUtil > 0)) return null;
+  return { id: e.id, nome: e.nome, valorCentavos: e.valorCentavos, vidaUtilHoras: e.vidaUtil, potenciaW: e.alimentacao === 'eletrico' ? e.potenciaW : 0 };
 }
 
 export function maquinasDosEquipamentos(equipamentos: Equipamento[]): Maquina[] {

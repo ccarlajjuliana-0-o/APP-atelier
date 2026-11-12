@@ -4,10 +4,9 @@ import { carregarAjustes } from '../../dados/financeiro.ts';
 import { hojeLocal } from '../../dados/pedidos.ts';
 import { novoId } from '../../dados/db.ts';
 import {
-  TAREFAS_SUGERIDAS, TIPOS_EQUIPAMENTO, diasEntre, maquinaDoEquipamento, pendencias, proximaDaTarefa, situacaoDaTarefa, textoDoPrazo,
-  type Equipamento, type Tarefa, type TipoEquipamento,
+  ALIMENTACOES, TAREFAS_SUGERIDAS, TIPOS_EQUIPAMENTO, UNIDADES_VIDA, custoDeUso, diasEntre, pendencias, proximaDaTarefa, situacaoDaTarefa,
+  textoDoPrazo, type Alimentacao, type Equipamento, type Tarefa, type TipoEquipamento, type UnidadeVida,
 } from '../../dominio/equipamentos.ts';
-import { custoHoraMaquinaCentavos } from '../../dominio/financeiro.ts';
 import { centavosParaTexto } from '../../dominio/dinheiro.ts';
 import { dataParaTexto } from '../../dominio/pedidos.ts';
 import { CampoFotos, Miniatura } from '../componentes/Fotos.tsx';
@@ -15,7 +14,7 @@ import { Campo, CampoNumero } from './FinanceiroCampos.tsx';
 
 function novo(): Equipamento {
   return {
-    id: '', nome: '', tipo: 'encadernacao', modelo: '', dataCompra: null, valorCentavos: 0, vidaUtilHoras: 0, potenciaW: 0, usarNoCusto: false,
+    id: '', nome: '', tipo: 'encadernacao', modelo: '', dataCompra: null, valorCentavos: 0, alimentacao: 'manual', vidaUtil: 0, vidaUtilUnidade: 'horas', vidaUtilRotulo: '', potenciaW: 0, usarNoCusto: false,
     tarefas: [], historico: [], fotos: [], observacoes: '', ativo: true, atualizadoEm: '',
   };
 }
@@ -90,11 +89,11 @@ export function Equipamentos() {
       ) : (
         <div className="cartao" style={{ padding: 0, overflowX: 'auto' }}>
           <table className="tabela">
-            <thead><tr><th>Equipamento</th><th>Manutenção</th><th>Custo por hora</th><th /></tr></thead>
+            <thead><tr><th>Equipamento</th><th>Manutenção</th><th>Custo de uso</th><th /></tr></thead>
             <tbody>
               {visiveis.map((e) => {
                 const pend = pendencias([e], hoje);
-                const maq = maquinaDoEquipamento(e);
+                const uso = custoDeUso(e, kwh);
                 return (
                   <tr key={e.id}>
                     <td>
@@ -102,7 +101,7 @@ export function Equipamentos() {
                         <Miniatura foto={e.fotos?.[0]} />
                         <div>
                           <strong>{e.nome}</strong>
-                          <div className="suave" style={{ fontSize: 13 }}>{TIPOS_EQUIPAMENTO[e.tipo].split(' (')[0]}{e.modelo ? ` · ${e.modelo}` : ''}</div>
+                          <div className="suave" style={{ fontSize: 13 }}>{TIPOS_EQUIPAMENTO[e.tipo].split(' (')[0]} · {ALIMENTACOES[e.alimentacao].toLowerCase()}{e.modelo ? ` · ${e.modelo}` : ''}</div>
                         </div>
                       </div>
                     </td>
@@ -114,7 +113,7 @@ export function Equipamentos() {
                         </>
                       )}
                     </td>
-                    <td className="din">{maq ? centavosParaTexto(Math.round(custoHoraMaquinaCentavos(maq, kwh))) : <span className="suave">—</span>}</td>
+                    <td className="din">{uso ? `${centavosParaTexto(Math.round(uso.centavos))} por ${uso.por}` : <span className="suave">—</span>}</td>
                     <td><div className="linha" style={{ justifyContent: 'flex-end' }}><button className="btn" onClick={() => setEditando(e)}>Abrir</button></div></td>
                   </tr>
                 );
@@ -139,7 +138,8 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
   const [custoMan, setCustoMan] = useState<number | null>(null);
   const [obsMan, setObsMan] = useState('');
 
-  const maq = maquinaDoEquipamento(e);
+  const uso = custoDeUso(e, p.kwh);
+  const emHoras = e.vidaUtilUnidade === 'horas';
 
   function mudarTarefa(id: string, parte: Partial<Tarefa>) {
     setE({ ...e, tarefas: e.tarefas.map((t) => (t.id === id ? { ...t, ...parte } : t)) });
@@ -185,20 +185,48 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
         <Campo rotulo="Data da compra"><input type="date" value={e.dataCompra ?? ''} onChange={(x) => setE({ ...e, dataCompra: x.target.value || null })} /></Campo>
       </div>
 
-      <h3 style={{ margin: '16px 0 4px' }}>Custo por hora</h3>
+      <h3 style={{ margin: '16px 0 4px' }}>Funcionamento e custo de uso</h3>
       <p className="suave" style={{ margin: 0, fontSize: 13 }}>
-        Opcional. O desgaste por hora é o valor pago dividido pela vida útil estimada, mais a energia. Se marcar para usar no custo, a máquina aparece no Financeiro para as peças 3D.
+        Opcional. O desgaste é o valor pago dividido pela vida útil estimada. Se for elétrico e a vida útil estiver em horas, soma também a energia.
       </p>
+      <div className="linha" style={{ marginTop: 10 }}>
+        {(Object.keys(ALIMENTACOES) as Alimentacao[]).map((a) => (
+          <button key={a} className="pilula" aria-pressed={e.alimentacao === a} onClick={() => setE({ ...e, alimentacao: a, potenciaW: a === 'manual' ? 0 : e.potenciaW })}>
+            {ALIMENTACOES[a]}
+          </button>
+        ))}
+      </div>
       <div className="formgrid">
         <CampoNumero rotulo="Valor pago" sufixo="R$" valor={e.valorCentavos ? e.valorCentavos / 100 : null} aoMudar={(n) => setE({ ...e, valorCentavos: Math.round((n ?? 0) * 100) })} />
-        <CampoNumero rotulo="Vida útil estimada" sufixo="horas" valor={e.vidaUtilHoras || null} aoMudar={(n) => setE({ ...e, vidaUtilHoras: n ?? 0 })} />
-        <CampoNumero rotulo="Consumo médio" sufixo="watts" valor={e.potenciaW || null} aoMudar={(n) => setE({ ...e, potenciaW: n ?? 0 })} />
+        <CampoNumero rotulo="Vida útil estimada" valor={e.vidaUtil || null} aoMudar={(n) => setE({ ...e, vidaUtil: n ?? 0 })} />
+        <Campo rotulo="Medida em">
+          <select value={e.vidaUtilUnidade} onChange={(x) => setE({ ...e, vidaUtilUnidade: x.target.value as UnidadeVida, usarNoCusto: x.target.value === 'horas' ? e.usarNoCusto : false })}>
+            {(Object.keys(UNIDADES_VIDA) as UnidadeVida[]).map((u) => <option key={u} value={u}>{UNIDADES_VIDA[u]}</option>)}
+          </select>
+        </Campo>
+        {e.vidaUtilUnidade === 'outro' && (
+          <Campo rotulo="Nome da unidade (no singular)">
+            <input type="text" placeholder="ex.: furo, folha, metro" value={e.vidaUtilRotulo} onChange={(x) => setE({ ...e, vidaUtilRotulo: x.target.value })} />
+          </Campo>
+        )}
+        {e.alimentacao === 'eletrico' && (
+          <CampoNumero rotulo="Consumo médio" sufixo="watts" valor={e.potenciaW || null} aoMudar={(n) => setE({ ...e, potenciaW: n ?? 0 })} />
+        )}
       </div>
       <div className="linha" style={{ marginTop: 8 }}>
-        <label className="linha">
-          <input type="checkbox" checked={e.usarNoCusto} onChange={(x) => setE({ ...e, usarNoCusto: x.target.checked })} /> Usar no custo das peças 3D (Financeiro)
-        </label>
-        {maq && <span className="suave">Custo por hora: {centavosParaTexto(Math.round(custoHoraMaquinaCentavos(maq, p.kwh)))}{p.kwh === 0 ? ' (sem energia: preencha a tarifa em Financeiro › Ajustes)' : ''}</span>}
+        {emHoras ? (
+          <label className="linha">
+            <input type="checkbox" checked={e.usarNoCusto} onChange={(x) => setE({ ...e, usarNoCusto: x.target.checked })} /> Usar no custo das peças 3D (Financeiro)
+          </label>
+        ) : (
+          <span className="suave" style={{ fontSize: 13 }}>Para entrar no custo das peças 3D, a vida útil precisa estar em horas.</span>
+        )}
+        {uso && (
+          <span className="suave">
+            Custo de uso: {centavosParaTexto(Math.round(uso.centavos))} por {uso.por}
+            {emHoras && e.alimentacao === 'eletrico' && e.potenciaW > 0 && p.kwh === 0 ? ' (sem energia: preencha a tarifa em Financeiro › Ajustes)' : ''}
+          </span>
+        )}
       </div>
 
       <h3 style={{ margin: '16px 0 4px' }}>Manutenção</h3>
