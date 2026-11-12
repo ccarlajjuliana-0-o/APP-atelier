@@ -3,6 +3,17 @@ import { nuvem } from '../../dados/nuvem.ts';
 import { perguntar } from '../../dados/assistente.ts';
 import { PERGUNTAS_SUGERIDAS, type Mensagem } from '../../dominio/assistente.ts';
 
+/** Mostra **negrito** como negrito de verdade, sem interpretar mais nada do texto da IA. */
+function Texto({ t }: { t: string }) {
+  return (
+    <>
+      {t.split(/(\*\*[^*\n]+\*\*)/g).map((parte, i) =>
+        parte.startsWith('**') && parte.endsWith('**') && parte.length > 4 ? <strong key={i}>{parte.slice(2, -2)}</strong> : <span key={i}>{parte}</span>,
+      )}
+    </>
+  );
+}
+
 export function Assistente() {
   const [conversa, setConversa] = useState<Mensagem[]>([]);
   const [texto, setTexto] = useState('');
@@ -63,7 +74,7 @@ export function Assistente() {
             <div key={i} style={{
               alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', whiteSpace: 'pre-wrap', padding: '10px 14px', borderRadius: 16,
               background: m.role === 'user' ? 'var(--principal)' : 'var(--neutro)', color: m.role === 'user' ? 'var(--sobre-principal)' : 'var(--texto)',
-            }}>{m.content}</div>
+            }}><Texto t={m.content} /></div>
           ))}
           {pensando && <div className="suave">Pensando…</div>}
           <div ref={fim} />
