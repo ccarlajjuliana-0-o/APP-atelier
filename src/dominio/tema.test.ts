@@ -48,3 +48,15 @@ test('visual da nuvem só vale se for mais novo', () => {
   assert.equal(remotoMaisNovo('2026-11-12T12:00:00Z', '2026-11-12T11:00:00Z'), false);
   assert.equal(remotoMaisNovo('2026-11-12T12:00:00Z', undefined), false);
 });
+
+test('fundo e texto livres ajustam o resto e a escala limita', () => {
+  const v = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'claro', fundoLivre: '#102030' }, false);
+  assert.equal(v['--fundo'], '#102030');
+  assert.equal(v['--texto'], '#FFFFFF');
+  assert.ok(contraste(v['--texto'], v['--fundo']) >= 4.5);
+  const w = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'claro', textoLivre: '#222222' }, false);
+  assert.equal(w['--texto'], '#222222');
+  assert.equal(w['--fundo'], '#FBF7F4');
+  assert.equal(variaveis({ ...PREFERENCIAS_PADRAO, escalaFonte: 999 }, false)['--escala'], '1.4');
+  assert.equal(variaveis({ ...PREFERENCIAS_PADRAO }, false)['--escala'], '1');
+});

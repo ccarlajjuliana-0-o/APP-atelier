@@ -61,17 +61,17 @@ export function Precos({ irParaAjustes }: { irParaAjustes: () => void }) {
                   <tr key={p.id}>
                     <td>
                       <strong>{p.nome}</strong>
-                      <div className="suave" style={{ fontSize: 12 }}>{LINHAS[p.linha]}</div>
-                      {c.semCusto > 0 && <div className="suave" style={{ fontSize: 12 }}>faltam custos de {c.semCusto} material(is)</div>}
+                      <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>{LINHAS[p.linha]}</div>
+                      {c.semCusto > 0 && <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>faltam custos de {c.semCusto} material(is)</div>}
                     </td>
                     <td className="din">
                       {centavosParaTexto(r.custo)}
-                      {r.maquina > 0 && <div className="suave" style={{ fontSize: 12 }}>máquina {centavosParaTexto(r.maquina)}</div>}
+                      {r.maquina > 0 && <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>máquina {centavosParaTexto(r.maquina)}</div>}
                     </td>
                     <td className="din">{p.precoCentavos !== null ? centavosParaTexto(p.precoCentavos) : '—'}</td>
                     <td className="din">
                       {r.lucroAtual !== null ? centavosParaTexto(r.lucroAtual) : '—'}
-                      {r.margemAtualPct !== null && <div className="suave" style={{ fontSize: 12 }}>{r.margemAtualPct.toFixed(0)}% do preço</div>}
+                      {r.margemAtualPct !== null && <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>{r.margemAtualPct.toFixed(0)}% do preço</div>}
                     </td>
                     <td className="din">{r.horaAtual !== null ? centavosParaTexto(r.horaAtual) : p.tempoTrabalhoMin > 0 ? '—' : <span className="suave">sem tempo</span>}</td>
                     {r.sugeridoPorCanal.map((v, k) => <td key={k} className="din">{v !== null ? centavosParaTexto(v) : '—'}</td>)}
@@ -82,7 +82,7 @@ export function Precos({ irParaAjustes }: { irParaAjustes: () => void }) {
           </table>
         </div>
       )}
-      <p className="suave" style={{ fontSize: 13 }}>
+      <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
         “Lucro” é o preço atual menos o custo, sem taxa de canal. Preencha o tempo de trabalho no produto para ver o ganho por hora.
       </p>
     </>

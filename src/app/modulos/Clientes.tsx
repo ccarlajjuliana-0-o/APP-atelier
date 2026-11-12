@@ -84,18 +84,18 @@ export function Clientes() {
                   <tr key={c.id}>
                     <td>
                       <strong>{c.nome}</strong>
-                      {c.observacoes && <div className="suave" style={{ fontSize: 13 }}>{c.observacoes}</div>}
+                      {c.observacoes && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{c.observacoes}</div>}
                     </td>
                     <td>
                       {c.contato || '—'}
-                      {c.email && <div className="suave" style={{ fontSize: 13 }}>{c.email}</div>}
+                      {c.email && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{c.email}</div>}
                     </td>
                     <td>{c.origem || '—'}</td>
                     <td>
                       {r ? (
                         <>
                           {r.pedidos} · {centavosParaTexto(r.totalCentavos)}
-                          <div className="suave" style={{ fontSize: 12 }}>último em {r.ultimo ? new Date(r.ultimo).toLocaleDateString('pt-BR') : '—'}</div>
+                          <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>último em {r.ultimo ? new Date(r.ultimo).toLocaleDateString('pt-BR') : '—'}</div>
                         </>
                       ) : 'nenhum ainda'}
                     </td>

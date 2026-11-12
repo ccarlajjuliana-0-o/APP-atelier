@@ -88,7 +88,7 @@ export function TesteFonte() {
             <strong>{f.nome}</strong>
             <span className="etiqueta">.{f.formato} · licença: {f.licenca}</span>
           </div>
-          <div style={{ fontFamily: `atelie-${f.id}, cursive`, fontSize: 40, margin: '10px 0' }}>Craft Notes Unique</div>
+          <div style={{ fontFamily: `atelie-${f.id}, cursive`, fontSize: 'calc(40px * var(--escala, 1))', margin: '10px 0' }}>Craft Notes Unique</div>
           <div className="linha">
             <button className="btn" onClick={() => void alternar(f)}>{f.ativa ? 'Desativar' : 'Ativar'}</button>
             <button className="btn" onClick={() => void remover(f)}>Remover</button>

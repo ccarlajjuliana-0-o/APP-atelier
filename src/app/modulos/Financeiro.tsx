@@ -65,7 +65,7 @@ function Caixa() {
             <span>Resultado: <strong>{centavosParaTexto(fluxo.resultado)}</strong></span>
           </div>
         )}
-        <p className="suave" style={{ fontSize: 13, marginBottom: 0 }}>
+        <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))', marginBottom: 0 }}>
           Entradas vêm dos pagamentos registrados nos pedidos. Saídas vêm das compras de material, das despesas avulsas e das despesas fixas do mês. O resultado é o que sobrou em caixa, sem descontar o desgaste das máquinas.
         </p>
       </div>
@@ -214,7 +214,7 @@ function Equilibrio({ irParaDespesas }: { irParaDespesas: () => void }) {
           {eq.pedidosNecessarios === null ? (
             <p className="aviso">Cada pedido está sobrando zero ou menos depois do material e das taxas, então não há equilíbrio possível. Revise os preços.</p>
           ) : (
-            <p style={{ fontSize: 18 }}>Para empatar: <strong>{eq.pedidosNecessarios} pedido(s) por mês</strong>.</p>
+            <p style={{ fontSize: 'calc(18px * var(--escala, 1))' }}>Para empatar: <strong>{eq.pedidosNecessarios} pedido(s) por mês</strong>.</p>
           )}
           <div className="formgrid">
             <CampoNumero rotulo="E se eu vender por mês" sufixo="pedidos" valor={previsao} aoMudar={setPrevisao} />
@@ -226,7 +226,7 @@ function Equilibrio({ irParaDespesas }: { irParaDespesas: () => void }) {
           )}
         </>
       )}
-      <p className="suave" style={{ fontSize: 13 }}>
+      <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
         O custo de material usa o custo médio atual de cada material; materiais sem compra registrada contam como zero e deixam o cálculo otimista demais.
       </p>
     </div>

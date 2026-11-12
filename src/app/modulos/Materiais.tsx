@@ -137,7 +137,7 @@ export function Materiais() {
                       <Miniatura foto={m.foto} />
                       <div>
                         <strong>{m.nome}</strong>
-                        <div className="suave" style={{ fontSize: 13 }}>
+                        <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
                           {CATEGORIAS[m.categoria]}{m.essencial ? ' · essencial' : ''}
                         </div>
                       </div>
@@ -147,7 +147,7 @@ export function Materiais() {
                     {formatarQuantidade(disp(m), m.unidade)}{' '}
                     {repor(m) && <span className="etiqueta" style={{ background: '#F1CDD9', color: '#3E3550' }}>repor</span>}
                     {duracao[m.id]?.dias !== null && duracao[m.id]?.dias !== undefined && (
-                      <div className="suave" style={{ fontSize: 12 }}>
+                      <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>
                         dura ~{duracao[m.id].dias} dia(s) no seu ritmo · acaba por volta de {dataParaTexto(duracao[m.id].acabaEm)}
                       </div>
                     )}
@@ -158,7 +158,7 @@ export function Materiais() {
                     {ultimas[m.id] ? (
                       <>
                         {centavosParaTexto(ultimas[m.id].valorCentavos)}
-                        <div className="suave" style={{ fontSize: 12 }}>
+                        <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>
                           {new Date(ultimas[m.id].data).toLocaleDateString('pt-BR')}{ultimas[m.id].fornecedor ? ` · ${ultimas[m.id].fornecedor}` : ''}
                         </div>
                       </>

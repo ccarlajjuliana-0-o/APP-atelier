@@ -98,11 +98,11 @@ export function Fornecedores() {
                   <tr key={f.id}>
                     <td>
                       <strong>{f.nome}</strong>
-                      {f.observacoes && <div className="suave" style={{ fontSize: 13 }}>{f.observacoes}</div>}
+                      {f.observacoes && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{f.observacoes}</div>}
                     </td>
                     <td>
                       {f.contato || '—'}
-                      {f.email && <div className="suave" style={{ fontSize: 13 }}>{f.email}</div>}
+                      {f.email && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{f.email}</div>}
                       {href && <div><a href={href} target="_blank" rel="noopener noreferrer">Abrir site</a></div>}
                     </td>
                     <td>{f.categorias.length ? f.categorias.map((c) => CATEGORIAS[c as Categoria] ?? c).join(', ') : '—'}</td>
@@ -110,7 +110,7 @@ export function Fornecedores() {
                       {r && r.compras > 0 ? (
                         <>
                           {r.compras} · {centavosParaTexto(r.totalCentavos)}
-                          <div className="suave" style={{ fontSize: 12 }}>última em {r.ultima ? new Date(r.ultima).toLocaleDateString('pt-BR') : '—'}</div>
+                          <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>última em {r.ultima ? new Date(r.ultima).toLocaleDateString('pt-BR') : '—'}</div>
                         </>
                       ) : 'nenhuma ainda'}
                     </td>
@@ -153,7 +153,7 @@ function Form(p: { inicial: Fornecedor; fechar: () => void; aoSalvar: (m: string
         <Campo rotulo="E-mail"><input type="text" inputMode="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Campo>
         <Campo rotulo="Site ou loja online"><input type="text" inputMode="url" placeholder="https://" value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></Campo>
       </div>
-      <div className="suave" style={{ fontSize: 13, fontWeight: 600, margin: '12px 0 6px' }}>O que vende</div>
+      <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))', fontWeight: 600, margin: '12px 0 6px' }}>O que vende</div>
       <div className="linha">
         {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => (
           <button key={c} className="pilula" aria-pressed={f.categorias.includes(c)} onClick={() => alternar(c)}>{CATEGORIAS[c]}</button>

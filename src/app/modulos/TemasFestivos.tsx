@@ -34,7 +34,7 @@ function CartaoTema(p: {
       <div style={{ padding: 8 }}><PreviaTema aparencia={p.t} prefs={p.prefs} titulo={p.t.nome} /></div>
       <div className="corpo">
         <strong>{p.t.nome}{p.ajustado ? ' ✨' : ''}</strong>
-        <span className="suave" style={{ fontSize: 13 }}>{data ? dataParaTexto(data) : 'sem data (uso manual)'}{p.ajustado ? ' · ajustado por você' : ''}</span>
+        <span className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{data ? dataParaTexto(data) : 'sem data (uso manual)'}{p.ajustado ? ' · ajustado por você' : ''}</span>
         <div className="linha" style={{ marginTop: 'auto' }}>
           <button className="btn" style={{ minHeight: 36 }} onClick={p.aoUsar} disabled={p.ativo}>{p.ativo ? 'Em uso' : 'Usar agora'}</button>
           <button className="btn" style={{ minHeight: 36 }} onClick={p.aoVer}>Ver maior</button>
@@ -108,7 +108,7 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
       {pronto && <p className="suave" style={{ marginTop: 0 }}>É um tema pronto: o que você mudar aqui passa a valer no lugar dele, e dá para voltar ao original quando quiser.</p>}
       <div style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--cartao)', padding: '4px 0 10px' }}>
         <PreviaTema grande aparencia={t} prefs={p.prefs} titulo={t.nome || 'Seu tema'} />
-        <span className="suave" style={{ fontSize: 12 }}>Pré-visualização: nada muda no app até você salvar e usar o tema.</span>
+        <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>Pré-visualização: nada muda no app até você salvar e usar o tema.</span>
       </div>
       <div className="formgrid">
         <Campo rotulo="Nome do tema"><input type="text" value={t.nome} onChange={(e) => setT({ ...t, nome: e.target.value })} /></Campo>
@@ -127,7 +127,7 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
           </Campo>
         </div>
       )}
-      {pronto && t.regra.tipo !== 'fixa' && t.regra.tipo !== 'nenhuma' && <p className="suave" style={{ fontSize: 13 }}>A data deste tema muda a cada ano (ex.: Páscoa) e segue a regra original.</p>}
+      {pronto && t.regra.tipo !== 'fixa' && t.regra.tipo !== 'nenhuma' && <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>A data deste tema muda a cada ano (ex.: Páscoa) e segue a regra original.</p>}
 
       <h3 style={{ margin: '14px 0 6px' }}>Cores</h3>
       <div className="linha" style={{ gap: 18 }}>
@@ -143,7 +143,7 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
           <ModoDaImagem modo={t.modoImagem} aoModo={(modoImagem) => setT({ ...t, modoImagem })} tamanho={t.tamanho} aoTamanho={(tamanho) => setT({ ...t, tamanho })} />
           <Campo rotulo={`Suavidade da imagem: ${t.veu}%`}>
             <input type="range" min={40} max={95} step={5} value={t.veu} onChange={(e) => setT({ ...t, veu: Number(e.target.value) })} />
-            <span className="suave" style={{ fontSize: 12, fontWeight: 400 }}>Mais alto deixa a imagem mais clara e o texto mais fácil de ler.</span>
+            <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 400 }}>Mais alto deixa a imagem mais clara e o texto mais fácil de ler.</span>
           </Campo>
         </div>
       ) : (
@@ -163,7 +163,7 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
           <button key={v} className="pilula" aria-pressed={t.menuImagem === v} onClick={() => setT({ ...t, menuImagem: v })}>{n}</button>
         ))}
       </div>
-      {t.menuImagem === 'mesma' && !temFundo && <p className="suave" style={{ fontSize: 13 }}>Este tema ainda não tem imagem nem desenho de fundo para repetir no menu.</p>}
+      {t.menuImagem === 'mesma' && !temFundo && <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>Este tema ainda não tem imagem nem desenho de fundo para repetir no menu.</p>}
       {t.menuImagem === 'propria' && (
         <div style={{ marginTop: 8 }}>
           <SeletorImagem rotulo="imagem do menu" imagem={t.menuImagemPropria} aoMudar={(menuImagemPropria) => setT({ ...t, menuImagemPropria })} aoErro={setErro} />
@@ -176,7 +176,7 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
           )}
           <Campo rotulo={`Suavidade no menu: ${t.menuVeu}%`}>
             <input type="range" min={30} max={95} step={5} value={t.menuVeu} onChange={(e) => setT({ ...t, menuVeu: Number(e.target.value) })} />
-            <span className="suave" style={{ fontSize: 12, fontWeight: 400 }}>Mais alto deixa a cor do menu mais forte e as letras mais fáceis de ler.</span>
+            <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 400 }}>Mais alto deixa a cor do menu mais forte e as letras mais fáceis de ler.</span>
           </Campo>
         </div>
       )}
@@ -237,7 +237,7 @@ export function TemasFestivos({ prefs, aoMudar, tema }: { prefs: Preferencias; a
             <Campo rotulo="Fica quantos dias depois"><input type="number" min={0} max={30} value={depois} onChange={(e) => numero('temaDiasDepois', e.target.value)} /></Campo>
           </div>
         )}
-        <p className="suave" style={{ margin: '8px 0 0', fontSize: 13 }}>Enquanto um tema está valendo, as cores dele ficam no lugar das suas cores. Ao escolher um tema com “Usar agora”, ele fica até você voltar ao Automático ou ao padrão.</p>
+        <p className="suave" style={{ margin: '8px 0 0', fontSize: 'calc(13px * var(--escala, 1))' }}>Enquanto um tema está valendo, as cores dele ficam no lugar das suas cores. Ao escolher um tema com “Usar agora”, ele fica até você voltar ao Automático ou ao padrão.</p>
       </section>
 
       {vendo && (
@@ -248,7 +248,7 @@ export function TemasFestivos({ prefs, aoMudar, tema }: { prefs: Preferencias; a
             <button className="btn primario" onClick={() => { escolher(vendo.id); setVendo(null); }}>Usar este tema</button>
             <button className="btn" onClick={() => setVendo(null)}>Fechar</button>
           </div>
-          <p className="suave" style={{ fontSize: 12, margin: '8px 0 0' }}>Nada muda no app até você escolher “Usar este tema”.</p>
+          <p className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', margin: '8px 0 0' }}>Nada muda no app até você escolher “Usar este tema”.</p>
         </section>
       )}
 

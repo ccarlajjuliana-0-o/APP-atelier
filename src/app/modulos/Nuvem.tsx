@@ -20,7 +20,7 @@ export function EstadoNuvem() {
   if (!nuvem) return null;
   const hora = e.ultima ? new Date(e.ultima).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
   const texto = e.situacao === 'ok' ? `Nuvem: em dia às ${hora}` : e.situacao === 'sincronizando' ? 'Nuvem: sincronizando…' : e.situacao === 'erro' ? 'Nuvem: erro (veja em Nuvem)' : e.situacao === 'offline' ? 'Nuvem: sem internet' : 'Nuvem';
-  return <div className="suave" style={{ fontSize: 12, padding: '0 14px 8px' }}>{texto}</div>;
+  return <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', padding: '0 14px 8px' }}>{texto}</div>;
 }
 
 export function Nuvem() {

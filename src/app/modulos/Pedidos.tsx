@@ -130,20 +130,20 @@ export function Pedidos() {
                       <strong>#{p.numero}</strong>
                       <div><span className="etiqueta">{STATUS[p.status]}</span></div>
                     </td>
-                    <td>{nomeCliente(p.clienteId)}<div className="suave" style={{ fontSize: 12 }}>{TIPOS[p.tipo]}</div></td>
+                    <td>{nomeCliente(p.clienteId)}<div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>{TIPOS[p.tipo]}</div></td>
                     <td>
                       {p.itens[0] ? `${p.itens[0].quantidade}× ${p.itens[0].descricao}` : '—'}
-                      {p.itens.length > 1 && <div className="suave" style={{ fontSize: 12 }}>+ {p.itens.length - 1} item(ns)</div>}
+                      {p.itens.length > 1 && <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>+ {p.itens.length - 1} item(ns)</div>}
                     </td>
                     <td>{centavosParaTexto(total)}</td>
                     <td>
                       {p.dataPrometida ? dataParaTexto(p.dataPrometida) : <span className="suave">após confirmar</span>}
-                      {atraso && <div style={{ fontSize: 12, fontWeight: 700 }}>atrasado</div>}
+                      {atraso && <div style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 700 }}>atrasado</div>}
                     </td>
                     <td>
                       {p.status === 'cancelado' ? '—' : TEXTO_PAGAMENTO[situacaoPagamento(total, p.pagamentos)]}
                       {(p.status === 'pronto' || p.status === 'entregue') && pagoCentavos(p.pagamentos) < total && (
-                        <div style={{ fontSize: 12, fontWeight: 700 }}>falta receber {centavosParaTexto(total - pagoCentavos(p.pagamentos))}</div>
+                        <div style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 700 }}>falta receber {centavosParaTexto(total - pagoCentavos(p.pagamentos))}</div>
                       )}
                     </td>
                     <td><div className="linha" style={{ justifyContent: 'flex-end' }}><button className="btn" onClick={() => setAberto(p)}>Abrir</button></div></td>
@@ -356,7 +356,7 @@ function Detalhe(p: {
           <input type="text" inputMode="numeric" value={prazo} disabled={bloqueado} onChange={(e) => setPrazo(e.target.value)} />
         </Campo>
       </div>
-      <p className="suave" style={{ fontSize: 13, marginTop: 6 }}>
+      <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))', marginTop: 6 }}>
         Personalizado: 10 a 20 dias úteis · Catálogo: 3 a 7. O app sugere o maior prazo; ajuste se for combinar outro.
         {ini.dataPrometida && <> Entrega prometida: <strong>{dataParaTexto(ini.dataPrometida)}</strong>.</>}
       </p>
@@ -413,8 +413,8 @@ function Detalhe(p: {
                 <tr key={k}>
                   <td>
                     <strong>{i.descricao}</strong>
-                    {(i.modeloNome || i.adesivoNome) && <div className="suave" style={{ fontSize: 13 }}>{[i.modeloNome && `modelo: ${i.modeloNome}`, i.adesivoNome && `adesivos: ${i.adesivoNome}`].filter(Boolean).join(' · ')}</div>}
-                    {i.observacao && <div className="suave" style={{ fontSize: 13 }}>{i.observacao}</div>}
+                    {(i.modeloNome || i.adesivoNome) && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{[i.modeloNome && `modelo: ${i.modeloNome}`, i.adesivoNome && `adesivos: ${i.adesivoNome}`].filter(Boolean).join(' · ')}</div>}
+                    {i.observacao && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{i.observacao}</div>}
                   </td>
                   <td>{i.quantidade}</td>
                   <td>{centavosParaTexto(i.precoUnitCentavos)}</td>

@@ -3,7 +3,7 @@ import { prepararLogo } from '../../dados/imagem.ts';
 import { salvarLogo } from '../../dados/temas.ts';
 import { useLogo } from '../componentes/Logo.tsx';
 import {
-  FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, urlDasFontes, type Fonte, type Modo, type Preferencias,
+  ESCALA_MAX, ESCALA_MIN, FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, contraste, escalaDe, urlDasFontes, variaveis, type Fonte, type Modo, type Preferencias,
 } from '../tema/tema.ts';
 import { carregarFontes } from '../tema/fontes.ts';
 import { Escolha } from '../componentes/Escolha.tsx';
@@ -26,7 +26,7 @@ function EscolhaDeFonte(p: { titulo: string; fontes: Fonte[]; escolhida: string 
       opcoes={p.fontes.map((f) => ({
         id: f.id,
         estilo: { fontFamily: f.familia, fontSize: p.tamanho },
-        rotulo: <>{p.amostra} <span style={{ fontSize: 12, opacity: 0.75, fontFamily: 'var(--fonte-corpo)' }}>· {f.nome}</span></>,
+        rotulo: <>{p.amostra} <span style={{ fontSize: 'calc(12px * var(--escala, 1))', opacity: 0.75, fontFamily: 'var(--fonte-corpo)' }}>· {f.nome}</span></>,
       }))}
     />
   );
@@ -64,7 +64,7 @@ function CartaoLogo() {
             </label>
             {personalizada && <button className="btn" onClick={() => void salvarLogo(null).then(() => setMsg('Voltou à logo original.'))}>Voltar à original</button>}
           </div>
-          <p className="suave" style={{ margin: '8px 0 0', fontSize: 13 }}>PNG com fundo transparente fica melhor. Vale para o menu e a tela de entrada, e vai para a nuvem junto com o resto. O ícone do app instalado no aparelho não muda por aqui.</p>
+          <p className="suave" style={{ margin: '8px 0 0', fontSize: 'calc(13px * var(--escala, 1))' }}>PNG com fundo transparente fica melhor. Vale para o menu e a tela de entrada, e vai para a nuvem junto com o resto. O ícone do app instalado no aparelho não muda por aqui.</p>
         </div>
       </div>
       {msg && <p role="status" className="ok">{msg}</p>}
@@ -75,6 +75,10 @@ function CartaoLogo() {
 
 export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p: Preferencias) => void }) {
   const paleta = PALETAS.find((p) => p.id === prefs.paletaId) ?? PALETAS[0];
+  const atuais = variaveis(prefs, window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const escala = escalaDe(prefs);
+  const legivel = contraste(atuais['--texto'], atuais['--fundo']) >= 4.5;
+  const mudarEscala = (n: number) => aoMudar({ ...prefs, escalaFonte: Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, n)) });
 
   // Para mostrar cada opção na sua própria fonte, baixa todas enquanto esta tela está aberta.
   useEffect(() => {
@@ -100,7 +104,7 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
         </section>
         <section className="cartao">
           <h2>Prévia</h2>
-          <div className="script" style={{ fontSize: 36, lineHeight: 1.2 }}>Craft Notes Unique</div>
+          <div className="script" style={{ fontSize: 'calc(36px * var(--escala, 1))', lineHeight: 1.2 }}>Craft Notes Unique</div>
           <h3 style={{ margin: '4px 0' }}>Pedido #12 · Maria</h3>
           <p style={{ margin: '0 0 10px' }}>Cada caderno nasce pensado pra sua história.</p>
           <div className="linha">
@@ -111,7 +115,7 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
         </section>
       </div>
 
-      <div className="grade" style={{ marginTop: 16 }}>
+      <div className="grade" style={{ marginTop: 16, alignItems: 'start' }}>
         <section className="cartao" style={{ marginTop: 0 }}>
           <h2>Cores</h2>
           <Escolha
@@ -120,6 +124,11 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
             aoEscolher={(id) => aoMudar({ ...prefs, paletaId: id, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}
             opcoes={PALETAS.map((p) => ({ id: p.id, rotulo: <><Bolinha cor={p.principal} /><Bolinha cor={p.apoio} /><Bolinha cor={p.menu} /><span>{p.nome}</span></> }))}
           />
+          <div className="linha" style={{ marginTop: 12, gap: 10 }}>
+            <label>Cor do plano de fundo{' '}<input type="color" value={atuais['--fundo']} onChange={(e) => aoMudar({ ...prefs, fundoLivre: e.target.value })} /></label>
+            {prefs.fundoLivre && <button className="btn" onClick={() => aoMudar({ ...prefs, fundoLivre: undefined })}>Padrão do modo</button>}
+          </div>
+          <p className="suave" style={{ margin: '4px 0 0', fontSize: 13 }}>É o fundo das telas, nos modos claro e escuro. O texto troca sozinho entre claro e escuro para continuar legível, a menos que você escolha a cor dele em Fontes.</p>
           <details className="recolhivel" style={{ marginTop: 10 }}>
             <summary>Ou escolher minhas cores</summary>
             <div className="linha" style={{ gap: 18, marginTop: 6 }}>
@@ -129,7 +138,7 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
               <button className="btn" onClick={() => aoMudar({ ...prefs, principalLivre: undefined, apoioLivre: undefined, menuLivre: undefined })}>Voltar às cores da paleta</button>
             </div>
           </details>
-          <p className="suave" style={{ fontSize: 13 }}>O texto sobre as cores troca sozinho entre claro e escuro para manter a leitura. No modo escuro, o menu fica escuro, a menos que você escolha uma cor para ele.</p>
+          <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>O texto sobre as cores troca sozinho entre claro e escuro para manter a leitura. No modo escuro, o menu fica escuro, a menos que você escolha uma cor para ele.</p>
         </section>
         <section className="cartao" style={{ marginTop: 0 }}>
           <h2>Fontes</h2>
@@ -138,7 +147,21 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
             <EscolhaDeFonte titulo="Texto" fontes={FONTES_CORPO} escolhida={prefs.fonteCorpo} amostra="Cada detalhe feito à mão" tamanho={16} aoEscolher={(id) => aoMudar({ ...prefs, fonteCorpo: id })} />
             <EscolhaDeFonte titulo="Cursiva (nome do atelier no menu)" fontes={FONTES_SCRIPT} escolhida={prefs.fonteScript} amostra="Craft Notes Unique" tamanho={26} aoEscolher={(id) => aoMudar({ ...prefs, fonteScript: id })} />
           </div>
-          <p className="suave" style={{ fontSize: 13 }}>As fontes vêm da internet. Sem conexão, o app usa uma fonte parecida até voltar.</p>
+          <div className="linha" style={{ marginTop: 14, gap: 10 }}>
+            <label>Cor do texto{' '}<input type="color" value={atuais['--texto']} onChange={(e) => aoMudar({ ...prefs, textoLivre: e.target.value })} /></label>
+            {prefs.textoLivre && <button className="btn" onClick={() => aoMudar({ ...prefs, textoLivre: undefined })}>Padrão</button>}
+          </div>
+          {!legivel && <p className="aviso" role="status">Essa combinação de texto e fundo está difícil de ler. Tente uma cor de texto mais clara ou mais escura.</p>}
+          <div style={{ marginTop: 14 }}>
+            <span className="escolha-rotulo">Tamanho das letras: {escala}%</span>
+            <div className="linha" style={{ gap: 8, marginTop: 4 }}>
+              <button className="btn" aria-label="Diminuir letras" disabled={escala <= ESCALA_MIN} onClick={() => mudarEscala(escala - 5)}>A−</button>
+              <input type="range" aria-label="Tamanho das letras" min={ESCALA_MIN} max={ESCALA_MAX} step={5} value={escala} onChange={(e) => mudarEscala(Number(e.target.value))} style={{ flex: 1, minWidth: 120 }} />
+              <button className="btn" aria-label="Aumentar letras" disabled={escala >= ESCALA_MAX} onClick={() => mudarEscala(escala + 5)}>A+</button>
+              {escala !== 100 && <button className="btn" onClick={() => mudarEscala(100)}>Normal</button>}
+            </div>
+          </div>
+          <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>As fontes vêm da internet. Sem conexão, o app usa uma fonte parecida até voltar.</p>
         </section>
       </div>
       <div className="rodape" style={{ marginTop: 8 }}>

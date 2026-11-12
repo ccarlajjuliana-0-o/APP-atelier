@@ -70,6 +70,9 @@ export interface Preferencias {
   principalLivre?: string;
   apoioLivre?: string;
   menuLivre?: string;
+  fundoLivre?: string; // cor do plano de fundo (vale no lugar do claro/escuro padrão)
+  textoLivre?: string; // cor do texto
+  escalaFonte?: number; // tamanho das letras, em % (padrão 100)
   fonteCorpo?: string;
   fonteTitulo?: string;
   fonteScript?: string;
@@ -78,6 +81,10 @@ export interface Preferencias {
   temaDiasDepois?: number;
   atualizadoEm?: string; // usado para sincronizar o visual entre aparelhos
 }
+
+export const ESCALA_MIN = 85;
+export const ESCALA_MAX = 140;
+export const escalaDe = (p: Preferencias): number => (typeof p.escalaFonte === 'number' && Number.isFinite(p.escalaFonte) ? Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, Math.round(p.escalaFonte))) : 100);
 
 export const PREFERENCIAS_PADRAO: Preferencias = { modo: 'automatico', paletaId: 'marca' };
 
@@ -144,14 +151,37 @@ export function variaveis(p: Preferencias, sistemaEscuro: boolean, tema?: CoresD
   const apoio = tema ? tema.apoio : p.apoioLivre ?? base.apoio;
   const menu = tema ? (escuro ? MENU_ESCURO : tema.menu) : p.menuLivre ?? (escuro ? MENU_ESCURO : base.menu);
   const menuAtivo = escuro ? misturar(principal, MENU_ESCURO, 0.62) : principal;
+  const cor = {
+    fundo: escuro ? '#1E1726' : '#FBF7F4',
+    cartao: escuro ? '#2A2036' : '#FFFFFF',
+    texto: escuro ? '#F3ECF5' : '#3E3550',
+    suave: escuro ? '#B9AFC6' : '#6B6280',
+    linha: escuro ? '#3A2E48' : '#F0E3E6',
+    borda: escuro ? '#4C3E5C' : '#DCCBD3',
+    neutro: escuro ? '#33283F' : '#F7E5E7',
+  };
+  // Fundo e/ou texto escolhidos por você: o resto (cartões, linhas, texto suave) se ajusta a eles.
+  if (p.fundoLivre || p.textoLivre) {
+    const fundo = p.fundoLivre ?? cor.fundo;
+    const texto = p.textoLivre ?? (p.fundoLivre ? textoSobre(fundo) : cor.texto);
+    const claro = luminancia(fundo) > 0.5;
+    cor.fundo = fundo;
+    cor.texto = texto;
+    cor.cartao = p.fundoLivre ? misturar(fundo, '#FFFFFF', claro ? 0.6 : 0.07) : cor.cartao;
+    cor.suave = misturar(texto, fundo, 0.35);
+    cor.linha = misturar(fundo, texto, 0.1);
+    cor.borda = misturar(fundo, texto, 0.2);
+    cor.neutro = misturar(fundo, texto, 0.06);
+  }
   return {
-    '--fundo': escuro ? '#1E1726' : '#FBF7F4',
-    '--cartao': escuro ? '#2A2036' : '#FFFFFF',
-    '--texto': escuro ? '#F3ECF5' : '#3E3550',
-    '--texto-suave': escuro ? '#B9AFC6' : '#6B6280',
-    '--linha': escuro ? '#3A2E48' : '#F0E3E6',
-    '--borda': escuro ? '#4C3E5C' : '#DCCBD3',
-    '--neutro': escuro ? '#33283F' : '#F7E5E7',
+    '--escala': String(escalaDe(p) / 100),
+    '--fundo': cor.fundo,
+    '--cartao': cor.cartao,
+    '--texto': cor.texto,
+    '--texto-suave': cor.suave,
+    '--linha': cor.linha,
+    '--borda': cor.borda,
+    '--neutro': cor.neutro,
     '--menu': menu,
     '--sobre-menu': textoSobre(menu),
     '--menu-ativo': menuAtivo,

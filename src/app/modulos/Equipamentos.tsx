@@ -105,7 +105,7 @@ export function Equipamentos() {
                         <Miniatura foto={e.fotos?.[0]} />
                         <div>
                           <strong>{e.nome}</strong>
-                          <div className="suave" style={{ fontSize: 13 }}>{TIPOS_EQUIPAMENTO[e.tipo].split(' (')[0]} · {ALIMENTACOES[e.alimentacao].toLowerCase()}{e.modelo ? ` · ${e.modelo}` : ''}</div>
+                          <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{TIPOS_EQUIPAMENTO[e.tipo].split(' (')[0]} · {ALIMENTACOES[e.alimentacao].toLowerCase()}{e.modelo ? ` · ${e.modelo}` : ''}</div>
                         </div>
                       </div>
                     </td>
@@ -113,7 +113,7 @@ export function Equipamentos() {
                       {e.tarefas.length === 0 ? <span className="suave">sem tarefas</span> : pend.length === 0 ? <span className="ok">em dia</span> : (
                         <>
                           <strong>{pend[0].tarefa}</strong>
-                          <div style={{ fontSize: 12 }}>{textoDoPrazo(pend[0].dias)}{pend.length > 1 ? ` · +${pend.length - 1}` : ''}</div>
+                          <div style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>{textoDoPrazo(pend[0].dias)}{pend.length > 1 ? ` · +${pend.length - 1}` : ''}</div>
                         </>
                       )}
                     </td>
@@ -190,7 +190,7 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
       </div>
 
       <h3 style={{ margin: '16px 0 4px' }}>Funcionamento e custo de uso</h3>
-      <p className="suave" style={{ margin: 0, fontSize: 13 }}>
+      <p className="suave" style={{ margin: 0, fontSize: 'calc(13px * var(--escala, 1))' }}>
         Opcional. O desgaste é o valor pago dividido pela vida útil estimada. Se for elétrico e a vida útil estiver em horas, soma também a energia.
       </p>
       <div className="linha" style={{ marginTop: 10 }}>
@@ -226,7 +226,7 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
             <input type="checkbox" checked={e.usarNoCusto} onChange={(x) => setE({ ...e, usarNoCusto: x.target.checked })} /> Usar no custo das peças 3D (Financeiro)
           </label>
         ) : (
-          <span className="suave" style={{ fontSize: 13 }}>Para entrar no custo das peças 3D, a vida útil precisa estar em horas.</span>
+          <span className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>Para entrar no custo das peças 3D, a vida útil precisa estar em horas.</span>
         )}
         {uso && (
           <span className="suave">
@@ -237,7 +237,7 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
       </div>
 
       <h3 style={{ margin: '16px 0 4px' }}>Manutenção</h3>
-      <p className="suave" style={{ margin: 0, fontSize: 13 }}>
+      <p className="suave" style={{ margin: 0, fontSize: 'calc(13px * var(--escala, 1))' }}>
         Tarefas que se repetem de tantos em tantos dias. O app avisa na tela Início quando faltarem 7 dias ou menos. As sugestões são só um ponto de partida: ajuste conforme o manual do equipamento.
       </p>
       {e.tarefas.map((t) => {
@@ -267,7 +267,7 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
       {p.inicial.id && (
         <>
           <h3 style={{ margin: '16px 0 4px' }}>Registrar manutenção feita</h3>
-          <p className="suave" style={{ margin: 0, fontSize: 13 }}>Salve as alterações acima antes. Se houver custo (peça, lâmina, óleo), ele também entra nas despesas avulsas do Financeiro.</p>
+          <p className="suave" style={{ margin: 0, fontSize: 'calc(13px * var(--escala, 1))' }}>Salve as alterações acima antes. Se houver custo (peça, lâmina, óleo), ele também entra nas despesas avulsas do Financeiro.</p>
           <div className="formgrid">
             <Campo rotulo="Tarefa">
               <select value={tarefaSel} onChange={(x) => setTarefaSel(x.target.value)}>

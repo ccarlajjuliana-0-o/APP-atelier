@@ -65,7 +65,7 @@ export function Inicio({ ir, tema }: { ir: (t: Tela) => void; tema?: TemaResolvi
       {tema && tema.saudacao && (
         <div className="saudacao">
           <strong>{tema.saudacao}</strong>
-          <span style={{ fontSize: 13 }}>
+          <span style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
             Tema {tema.nome}{tema.fim ? ` até ${dataParaTexto(tema.fim)}` : ' (escolhido por você)'} · <button className="btn" style={{ minHeight: 32, padding: '0 12px' }} onClick={() => ir('configuracoes')}>Mudar tema</button>
           </span>
         </div>
@@ -108,7 +108,7 @@ export function Inicio({ ir, tema }: { ir: (t: Tela) => void; tema?: TemaResolvi
                       <strong>#{p.numero} · {p.cliente}</strong>
                       <span>falta {centavosParaTexto(p.falta)}</span>
                     </div>
-                    <span className="suave" style={{ fontSize: 13 }}>de {centavosParaTexto(p.totalCentavos)} · {STATUS[p.status].toLowerCase()}</span>
+                    <span className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>de {centavosParaTexto(p.totalCentavos)} · {STATUS[p.status].toLowerCase()}</span>
                   </li>
                 ))}
               </ul>
@@ -126,7 +126,7 @@ export function Inicio({ ir, tema }: { ir: (t: Tela) => void; tema?: TemaResolvi
                   <strong>#{p.numero} · {p.cliente}</strong>
                   <Prazo p={p} />
                 </div>
-                <span className="suave" style={{ fontSize: 13 }}>
+                <span className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
                   {p.status === 'pronto' ? 'pronto para entregar' : STATUS[p.status].toLowerCase()}
                   {p.falta > 0 ? ` · falta receber ${centavosParaTexto(p.falta)}` : ''}
                 </span>

@@ -124,7 +124,7 @@ export function AssistenteFlutuante({ telaAtual }: { telaAtual: string }) {
               Pergunte sobre estoque, pedidos, preços, caixa e divulgação. Eu só aconselho, não altero nada. Um resumo do ateliê (sem telefone e sem sobrenome de clientes) é enviado à IA para responder. 🌸
             </p>
             <div className="linha">
-              {PERGUNTAS_SUGERIDAS.map((q) => <button key={q} className="pilula" style={{ minHeight: 38, fontSize: 14 }} onClick={() => void enviar(q)}>{q}</button>)}
+              {PERGUNTAS_SUGERIDAS.map((q) => <button key={q} className="pilula" style={{ minHeight: 38, fontSize: 'calc(14px * var(--escala, 1))' }} onClick={() => void enviar(q)}>{q}</button>)}
             </div>
           </>
         )}

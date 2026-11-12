@@ -49,7 +49,7 @@ export function CampoFotos(p: { fotos: Blob[]; max: number; aoMudar: (f: Blob[])
 
   return (
     <div>
-      <div className="suave" style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{p.rotulo ?? 'Fotos'}</div>
+      <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))', fontWeight: 600, marginBottom: 6 }}>{p.rotulo ?? 'Fotos'}</div>
       <div className="linha">
         {urls.map((u, i) => (
           <div key={u} style={{ position: 'relative' }}>

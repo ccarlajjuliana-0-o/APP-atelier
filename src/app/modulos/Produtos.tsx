@@ -111,20 +111,20 @@ export function Produtos() {
                       <Miniatura foto={p.fotos?.[0]} />
                       <div>
                         <strong>{p.nome}</strong>
-                        <div className="suave" style={{ fontSize: 13 }}>{LINHAS[p.linha]}{p.categoria ? ` · ${p.categoria}` : ''}</div>
+                        <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{LINHAS[p.linha]}{p.categoria ? ` · ${p.categoria}` : ''}</div>
                       </div>
                     </div>
                   </td>
                   <td>{p.precoCentavos !== null ? centavosParaTexto(p.precoCentavos) : '—'}</td>
                   <td>
                     {p.receita.length ? centavosParaTexto(r.custoCentavos) : '—'}
-                    {r.semCusto.length > 0 && <div className="suave" style={{ fontSize: 12 }}>faltam custos de {r.semCusto.length} material(is)</div>}
+                    {r.semCusto.length > 0 && <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>faltam custos de {r.semCusto.length} material(is)</div>}
                   </td>
                   <td>{r.quantidade === null ? '—' : `${r.quantidade} un`}</td>
                   <td>
                     {nomeMat(r.limitante)}
                     {r.extrasEmFalta.length > 0 && (
-                      <div className="suave" style={{ fontSize: 12 }}>extra em falta: {r.extrasEmFalta.map(nomeMat).join(', ')}</div>
+                      <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>extra em falta: {r.extrasEmFalta.map(nomeMat).join(', ')}</div>
                     )}
                   </td>
                   <td>
@@ -140,7 +140,7 @@ export function Produtos() {
           </table>
         </div>
       )}
-      <p className="suave" style={{ fontSize: 13 }}>
+      <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
         O custo mostrado considera só os materiais da receita. Tempo de trabalho, tinta, desgaste das máquinas e o desperdício geral entram na precificação.
       </p>
     </>
@@ -260,7 +260,7 @@ function FormProduto(p: {
                   <tr key={i.materialId}>
                     <td>
                       <strong>{inf?.nome ?? 'Material removido'}</strong>
-                      {m && <div className="suave" style={{ fontSize: 12 }}>{CATEGORIAS[m.categoria]}</div>}
+                      {m && <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>{CATEGORIAS[m.categoria]}</div>}
                     </td>
                     <td style={{ minWidth: 120 }}>
                       <input type="text" inputMode="decimal" value={i.quantidade} onChange={(e) => atualizar(idx, { quantidade: e.target.value })} style={{ width: 80 }} />{' '}
@@ -296,7 +296,7 @@ function FormProduto(p: {
           {livres.map((m) => <option key={m.id} value={m.id}>{CATEGORIAS[m.categoria]} · {m.nome}</option>)}
         </select>
       </div>
-      <p className="suave" style={{ fontSize: 13 }}>
+      <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
         “Extra” é o material que o produto pode ficar sem (uma cantoneira, um adesivo): se faltar, ele só avisa e não impede de produzir.
         “Perda %” é a sobra específica daquele item. O desperdício geral entra depois, na precificação.
       </p>

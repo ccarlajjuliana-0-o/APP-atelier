@@ -107,7 +107,7 @@ export function Divulgacao() {
               );
             })}
           </div>
-          <p className="suave" style={{ fontSize: 13 }}>Toque em um dia para criar uma publicação, ou em uma publicação para abrir. Tracejado = ideia · cheio = publicado.</p>
+          <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>Toque em um dia para criar uma publicação, ou em uma publicação para abrir. Tracejado = ideia · cheio = publicado.</p>
         </div>
       )}
 
@@ -250,7 +250,7 @@ function Formulario(p: { inicial: Publicacao; produtos: Produto[]; aoSalvar: (p:
             </select>
           </Campo>
         </div>
-        {FORMATO_DO_CANAL[v.canal] && <p className="suave" style={{ fontSize: 13 }}>{FORMATO_DO_CANAL[v.canal]}</p>}
+        {FORMATO_DO_CANAL[v.canal] && <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{FORMATO_DO_CANAL[v.canal]}</p>}
       </div>
 
       <div className="cartao">
@@ -262,10 +262,10 @@ function Formulario(p: { inicial: Publicacao; produtos: Produto[]; aoSalvar: (p:
           </select>
           <button className="btn" onClick={sugerir}>{variacao === 0 ? 'Sugerir legenda' : 'Outra variação'}</button>
         </div>
-        <p className="suave" style={{ fontSize: 13 }}>A sugestão é um ponto de partida na voz do atelier. Ajuste com as suas palavras.</p>
+        <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>A sugestão é um ponto de partida na voz do atelier. Ajuste com as suas palavras.</p>
         <textarea rows={7} aria-label="Legenda" value={v.legenda} onChange={(e) => setV({ ...v, legenda: e.target.value })} />
         <Campo rotulo="Hashtags (até 5)"><input type="text" value={hashTexto} onChange={(e) => setHashTexto(e.target.value)} /></Campo>
-        <p className="suave" style={{ fontSize: 13 }}>{hashtags.join(' ')}</p>
+        <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{hashtags.join(' ')}</p>
         {avisos.length > 0 ? (
           <div className="aviso"><strong>Conferindo com a marca:</strong><ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{avisos.map((a) => <li key={a}>{a}</li>)}</ul></div>
         ) : (
@@ -289,7 +289,7 @@ function Formulario(p: { inicial: Publicacao; produtos: Produto[]; aoSalvar: (p:
       {v.status === 'publicado' && (
         <div className="cartao">
           <h2>Resultados</h2>
-          <p className="suave" style={{ fontSize: 13 }}>Copie os números das estatísticas da rede alguns dias depois de postar.</p>
+          <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>Copie os números das estatísticas da rede alguns dias depois de postar.</p>
           <div className="formgrid">
             {ROTULO_METRICA.map(([k, nome]) => (
               <Campo key={k} rotulo={nome}><input type="number" min={0} value={v.metricas[k] || ''} onChange={(e) => num(k, e.target.value)} /></Campo>
