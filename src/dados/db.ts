@@ -6,6 +6,7 @@ import type { ItemPedido, Pagamento, Reserva, StatusPedido } from '../dominio/pe
 import type { TipoPedido } from '../dominio/prazo.ts';
 import type { Ajustes, Despesa } from '../dominio/financeiro.ts';
 import type { Equipamento } from '../dominio/equipamentos.ts';
+import type { Publicacao } from '../dominio/divulgacao.ts';
 
 export interface Material {
   id: string;
@@ -129,6 +130,7 @@ class BancoAtelie extends Dexie {
   despesas!: Table<Despesa, string>;
   ajustes!: Table<Ajustes, string>;
   equipamentos!: Table<Equipamento, string>;
+  publicacoes!: Table<Publicacao, string>;
 
   constructor() {
     super('craft-notes-atelie');
@@ -145,6 +147,7 @@ class BancoAtelie extends Dexie {
     this.version(6).stores({ clientes: 'id, nome', pedidos: 'id, numero, status, clienteId' });
     this.version(7).stores({ despesas: 'id, tipo, data', ajustes: 'id' });
     this.version(8).stores({ equipamentos: 'id, nome, tipo' });
+    this.version(9).stores({ publicacoes: 'id, data, status' });
   }
 }
 
