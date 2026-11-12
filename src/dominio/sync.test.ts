@@ -49,5 +49,6 @@ test('fotos viram texto e voltam', async () => {
 
 test('tabelas sincronizadas', () => {
   assert.ok(TABELAS_SINCRONIZADAS.includes('movimentacoes'));
+  assert.ok(TABELAS_SINCRONIZADAS.includes('equipamentos'));
   assert.ok(!(TABELAS_SINCRONIZADAS as readonly string[]).includes('fontes'));
 });

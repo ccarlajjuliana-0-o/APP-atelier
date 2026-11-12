@@ -32,6 +32,9 @@ export async function exportarTudo(): Promise<Blob> {
   const produtos = await Promise.all(
     (await db.produtos.toArray()).map(async (p) => ({ ...p, fotos: await Promise.all((p.fotos ?? []).map(blobParaBase64)) })),
   );
+  const equipamentos = await Promise.all(
+    (await db.equipamentos.toArray()).map(async (e) => ({ ...e, fotos: await Promise.all((e.fotos ?? []).map(blobParaBase64)) })),
+  );
   const dados = {
     versao: 1,
     exportadoEm: new Date().toISOString(),
@@ -46,6 +49,7 @@ export async function exportarTudo(): Promise<Blob> {
     pedidos: await db.pedidos.toArray(),
     despesas: await db.despesas.toArray(),
     ajustes: await db.ajustes.toArray(),
+    equipamentos,
   };
   return new Blob([JSON.stringify(dados)], { type: 'application/json' });
 }
@@ -68,7 +72,10 @@ export async function importarTudo(arquivo: File): Promise<void> {
   const produtos = await Promise.all(
     (dados.produtos ?? []).map(async (p: any) => ({ ...p, fotos: await Promise.all((p.fotos ?? []).map(base64ParaBlob)) })),
   );
-  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos, db.fornecedores, db.clientes, db.pedidos, db.despesas, db.ajustes], async () => {
+  const equipamentos = await Promise.all(
+    (dados.equipamentos ?? []).map(async (e: any) => ({ ...e, fotos: await Promise.all((e.fotos ?? []).map(base64ParaBlob)) })),
+  );
+  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos, db.fornecedores, db.clientes, db.pedidos, db.despesas, db.ajustes, db.equipamentos], async () => {
     await db.materiais.bulkPut(materiais);
     await db.movimentacoes.bulkPut(dados.movimentacoes ?? []);
     await db.fontes.bulkPut(fontes);
@@ -80,6 +87,7 @@ export async function importarTudo(arquivo: File): Promise<void> {
     await db.pedidos.bulkPut(dados.pedidos ?? []);
     await db.despesas.bulkPut(dados.despesas ?? []);
     await db.ajustes.bulkPut(dados.ajustes ?? []);
+    await db.equipamentos.bulkPut(equipamentos);
   });
 }
 

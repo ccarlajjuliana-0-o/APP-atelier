@@ -6,6 +6,8 @@ import { centavosParaTexto } from '../../dominio/dinheiro.ts';
 import { custoHoraMaquinaCentavos, precificar, type Ajustes as AjustesTipo, type Canal, type Maquina } from '../../dominio/financeiro.ts';
 import { LINHAS } from '../../dominio/produtos.ts';
 import { novoId } from '../../dados/db.ts';
+import { listarEquipamentos } from '../../dados/equipamentos.ts';
+import { comMaquinasDosEquipamentos, maquinasDosEquipamentos } from '../../dominio/equipamentos.ts';
 import { Campo, CampoNumero } from './FinanceiroCampos.tsx';
 
 export function Precos({ irParaAjustes }: { irParaAjustes: () => void }) {
@@ -17,7 +19,7 @@ export function Precos({ irParaAjustes }: { irParaAjustes: () => void }) {
     void (async () => {
       setProdutos((await listarProdutos()).filter((p) => p.ativo));
       setCustos(await materiaisPorProduto());
-      setAjustes(await carregarAjustes());
+      setAjustes(comMaquinasDosEquipamentos(await carregarAjustes(), await listarEquipamentos()));
     })();
   }, []);
 
@@ -89,10 +91,12 @@ export function Precos({ irParaAjustes }: { irParaAjustes: () => void }) {
 
 export function Ajustes() {
   const [a, setA] = useState<AjustesTipo | null>(null);
+  const [doEquipamento, setDoEquipamento] = useState<Maquina[]>([]);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
     void carregarAjustes().then(setA);
+    void listarEquipamentos().then((l) => setDoEquipamento(maquinasDosEquipamentos(l)));
   }, []);
   if (!a) return null;
 
@@ -150,6 +154,19 @@ export function Ajustes() {
         <div className="formgrid" style={{ marginBottom: 8 }}>
           <CampoNumero rotulo="Tarifa de energia" sufixo="R$ por kWh" valor={a.kwhCentavos ? a.kwhCentavos / 100 : null} aoMudar={(n) => mudar({ kwhCentavos: Math.round((n ?? 0) * 100) })} dica="da sua conta de luz" />
         </div>
+        {doEquipamento.length > 0 && (
+          <>
+            <p className="suave" style={{ marginBottom: 4 }}>Vindas de Equipamentos (edite lá). Escolha qual vale para as peças 3D:</p>
+            {doEquipamento.map((m) => (
+              <div key={m.id} className="linha" style={{ marginBottom: 6 }}>
+                <label className="linha">
+                  <input type="radio" name="maquina3d" checked={a.maquina3dId === m.id} onChange={() => mudar({ maquina3dId: m.id })} /> <strong>{m.nome}</strong>
+                </label>
+                <span className="suave">custo por hora: {centavosParaTexto(Math.round(custoHoraMaquinaCentavos(m, a.kwhCentavos)))}</span>
+              </div>
+            ))}
+          </>
+        )}
         {a.maquinas.map((m) => (
           <div key={m.id} className="cartao" style={{ marginTop: 8, padding: 12 }}>
             <div className="formgrid">
