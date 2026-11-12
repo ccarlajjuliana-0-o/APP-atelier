@@ -60,3 +60,10 @@ test('fundo e texto livres ajustam o resto e a escala limita', () => {
   assert.equal(variaveis({ ...PREFERENCIAS_PADRAO, escalaFonte: 999 }, false)['--escala'], '1.4');
   assert.equal(variaveis({ ...PREFERENCIAS_PADRAO }, false)['--escala'], '1');
 });
+
+test('texto ilegível sobre o fundo é ignorado', () => {
+  const v = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'claro', fundoLivre: '#99C0F0', textoLivre: '#99C0F0' }, false);
+  assert.ok(contraste(v['--texto'], v['--fundo']) >= 4.5);
+  const w = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'claro', textoLivre: '#FBF7F4' }, false);
+  assert.equal(w['--texto'], '#3E3550');
+});

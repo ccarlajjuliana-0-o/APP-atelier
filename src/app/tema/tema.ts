@@ -82,6 +82,8 @@ export interface Preferencias {
   atualizadoEm?: string; // usado para sincronizar o visual entre aparelhos
 }
 
+/** Contraste mínimo aceito para um texto escolhido por você. */
+export const TEXTO_MINIMO = 3;
 export const ESCALA_MIN = 85;
 export const ESCALA_MAX = 140;
 export const escalaDe = (p: Preferencias): number => (typeof p.escalaFonte === 'number' && Number.isFinite(p.escalaFonte) ? Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, Math.round(p.escalaFonte))) : 100);
@@ -161,13 +163,16 @@ export function variaveis(p: Preferencias, sistemaEscuro: boolean, tema?: CoresD
     neutro: escuro ? '#33283F' : '#F7E5E7',
   };
   // Fundo e/ou texto escolhidos por você: o resto (cartões, linhas, texto suave) se ajusta a eles.
-  if (p.fundoLivre || p.textoLivre) {
-    const fundo = p.fundoLivre ?? cor.fundo;
-    const texto = p.textoLivre ?? (p.fundoLivre ? textoSobre(fundo) : cor.texto);
+  const fundoEscolhido = p.fundoLivre;
+  // Um texto ilegível sobre o fundo (contraste < 3) não é aplicado, para a tela nunca "sumir".
+  const textoEscolhido = p.textoLivre && contraste(p.textoLivre, fundoEscolhido ?? cor.fundo) >= TEXTO_MINIMO ? p.textoLivre : undefined;
+  if (fundoEscolhido || textoEscolhido) {
+    const fundo = fundoEscolhido ?? cor.fundo;
+    const texto = textoEscolhido ?? textoSobre(fundo);
     const claro = luminancia(fundo) > 0.5;
     cor.fundo = fundo;
     cor.texto = texto;
-    cor.cartao = p.fundoLivre ? misturar(fundo, '#FFFFFF', claro ? 0.6 : 0.07) : cor.cartao;
+    cor.cartao = fundoEscolhido ? misturar(fundo, '#FFFFFF', claro ? 0.6 : 0.07) : cor.cartao;
     cor.suave = misturar(texto, fundo, 0.35);
     cor.linha = misturar(fundo, texto, 0.1);
     cor.borda = misturar(fundo, texto, 0.2);

@@ -151,6 +151,8 @@ textarea { padding: 10px 12px; width: 100%; line-height: 1.5; }
 .previa.grande { height: 220px; font-size: 12px; }
 .previa.grande .ptela strong { font-size: 15px; }
 
+input[type='range'] { accent-color: var(--principal); }
+
 /* caixa de seleção com lista (cores e fontes) */
 .escolha { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .escolha-rotulo { font-weight: 600; font-size: calc(14px * var(--escala, 1)); }

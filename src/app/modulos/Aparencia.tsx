@@ -3,7 +3,7 @@ import { prepararLogo } from '../../dados/imagem.ts';
 import { salvarLogo } from '../../dados/temas.ts';
 import { useLogo } from '../componentes/Logo.tsx';
 import {
-  ESCALA_MAX, ESCALA_MIN, FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, contraste, escalaDe, urlDasFontes, variaveis, type Fonte, type Modo, type Preferencias,
+  ESCALA_MAX, ESCALA_MIN, TEXTO_MINIMO, FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, contraste, escalaDe, urlDasFontes, variaveis, type Fonte, type Modo, type Preferencias,
 } from '../tema/tema.ts';
 import { carregarFontes } from '../tema/fontes.ts';
 import { Escolha } from '../componentes/Escolha.tsx';
@@ -78,6 +78,7 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
   const atuais = variaveis(prefs, window.matchMedia('(prefers-color-scheme: dark)').matches);
   const escala = escalaDe(prefs);
   const legivel = contraste(atuais['--texto'], atuais['--fundo']) >= 4.5;
+  const textoRecusado = !!prefs.textoLivre && contraste(prefs.textoLivre, atuais['--fundo']) < TEXTO_MINIMO;
   const mudarEscala = (n: number) => aoMudar({ ...prefs, escalaFonte: Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, n)) });
 
   // Para mostrar cada opção na sua própria fonte, baixa todas enquanto esta tela está aberta.
@@ -151,7 +152,11 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
             <label>Cor do texto{' '}<input type="color" value={atuais['--texto']} onChange={(e) => aoMudar({ ...prefs, textoLivre: e.target.value })} /></label>
             {prefs.textoLivre && <button className="btn" onClick={() => aoMudar({ ...prefs, textoLivre: undefined })}>Padrão</button>}
           </div>
-          {!legivel && <p className="aviso" role="status">Essa combinação de texto e fundo está difícil de ler. Tente uma cor de texto mais clara ou mais escura.</p>}
+          {textoRecusado ? (
+            <p className="aviso" role="status">Essa cor de texto ficaria quase invisível sobre o fundo, então o app usou a cor automática. Escolha uma cor mais clara ou mais escura que o fundo. <button className="btn" style={{ minHeight: 32 }} onClick={() => aoMudar({ ...prefs, textoLivre: undefined })}>Voltar ao automático</button></p>
+          ) : !legivel && (
+            <p className="aviso" role="status">Essa combinação de texto e fundo está difícil de ler. Tente uma cor de texto mais clara ou mais escura. <button className="btn" style={{ minHeight: 32 }} onClick={() => aoMudar({ ...prefs, textoLivre: undefined })}>Texto automático</button></p>
+          )}
           <div style={{ marginTop: 14 }}>
             <span className="escolha-rotulo">Tamanho das letras: {escala}%</span>
             <div className="linha" style={{ gap: 8, marginTop: 4 }}>
