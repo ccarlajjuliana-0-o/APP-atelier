@@ -2,6 +2,8 @@ import Dexie, { type Table } from 'dexie';
 import type { Movimentacao } from '../dominio/estoque.ts';
 import type { Categoria, Unidade } from '../dominio/materiais.ts';
 import type { ItemProduto, Linha, Perfil3D } from '../dominio/produtos.ts';
+import type { ItemPedido, Pagamento, Reserva, StatusPedido } from '../dominio/pedidos.ts';
+import type { TipoPedido } from '../dominio/prazo.ts';
 
 export interface Material {
   id: string;
@@ -83,6 +85,35 @@ export interface Produto {
   atualizadoEm: string;
 }
 
+export interface Cliente {
+  id: string;
+  nome: string;
+  contato: string; // telefone ou WhatsApp
+  email: string;
+  origem: string; // Instagram, Shopee, indicação, site...
+  observacoes: string;
+  ativo: boolean;
+  atualizadoEm: string;
+}
+
+export interface Pedido {
+  id: string;
+  numero: number;
+  clienteId: string | null;
+  tipo: TipoPedido;
+  status: StatusPedido;
+  itens: ItemPedido[];
+  observacoes: string;
+  prazoDias: number; // em dias úteis, contados da confirmação
+  criadoEm: string;
+  confirmadoEm: string | null; // AAAA-MM-DD
+  dataPrometida: string | null; // AAAA-MM-DD
+  entregueEm: string | null; // AAAA-MM-DD
+  pagamentos: Pagamento[];
+  reservas: Reserva[]; // material reservado e ainda não baixado
+  atualizadoEm: string;
+}
+
 class BancoAtelie extends Dexie {
   materiais!: Table<Material, string>;
   movimentacoes!: Table<MovimentacaoRegistro, string>;
@@ -91,6 +122,8 @@ class BancoAtelie extends Dexie {
   mostruario!: Table<MostruarioRegistro, string>;
   produtos!: Table<Produto, string>;
   fornecedores!: Table<Fornecedor, string>;
+  clientes!: Table<Cliente, string>;
+  pedidos!: Table<Pedido, string>;
 
   constructor() {
     super('craft-notes-atelie');
@@ -104,6 +137,7 @@ class BancoAtelie extends Dexie {
     this.version(3).stores({ materiais: 'id, nome, categoria' });
     this.version(4).stores({ produtos: 'id, nome, linha' });
     this.version(5).stores({ fornecedores: 'id, nome' });
+    this.version(6).stores({ clientes: 'id, nome', pedidos: 'id, numero, status, clienteId' });
   }
 }
 

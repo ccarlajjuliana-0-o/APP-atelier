@@ -7,6 +7,8 @@ import {
 } from '../../dados/materiais.ts';
 import { listarFornecedores } from '../../dados/fornecedores.ts';
 import { CampoFotos, Miniatura } from '../componentes/Fotos.tsx';
+import { duracaoDosMateriais, type Duracao } from '../../dados/pedidos.ts';
+import { dataParaTexto } from '../../dominio/pedidos.ts';
 import { abaixoDoMinimo, converterCompra } from '../../dominio/estoque.ts';
 import {
   CATEGORIAS, UNIDADES, formatarQuantidade, lerNumero, microParaTexto, type Categoria, type Unidade,
@@ -35,6 +37,7 @@ export function Materiais() {
   const [painel, setPainel] = useState<Painel>(null);
   const [msg, setMsg] = useState('');
   const [ultimas, setUltimas] = useState<Record<string, UltimaCompra>>({});
+  const [duracao, setDuracao] = useState<Record<string, Duracao>>({});
   const [fornecedores, setFornecedores] = useState<string[]>([]);
   const painelRef = useRef<HTMLDivElement | null>(null);
 
@@ -42,6 +45,7 @@ export function Materiais() {
     setLista(await listarMateriais());
     setSaldo(await saldos());
     setUltimas(await ultimasCompras());
+    setDuracao(await duracaoDosMateriais());
     setFornecedores((await listarFornecedores()).filter((f) => f.ativo).map((f) => f.nome));
   }
   useEffect(() => {
@@ -142,6 +146,11 @@ export function Materiais() {
                   <td>
                     {formatarQuantidade(disp(m), m.unidade)}{' '}
                     {repor(m) && <span className="etiqueta" style={{ background: '#F1CDD9', color: '#3E3550' }}>repor</span>}
+                    {duracao[m.id]?.dias !== null && duracao[m.id]?.dias !== undefined && (
+                      <div className="suave" style={{ fontSize: 12 }}>
+                        dura ~{duracao[m.id].dias} dia(s) no seu ritmo · acaba por volta de {dataParaTexto(duracao[m.id].acabaEm)}
+                      </div>
+                    )}
                   </td>
                   <td>{m.minimo ? formatarQuantidade(m.minimo, m.unidade) : '—'}</td>
                   <td>{m.custoMedioMicro ? `${microParaTexto(m.custoMedioMicro)} / ${UNIDADES[m.unidade].singular}` : 'sem custo ainda'}</td>

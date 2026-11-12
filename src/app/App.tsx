@@ -8,11 +8,13 @@ import { TesteFonte } from './modulos/TesteFonte.tsx';
 import { Materiais } from './modulos/Materiais.tsx';
 import { Fornecedores } from './modulos/Fornecedores.tsx';
 import { Produtos } from './modulos/Produtos.tsx';
+import { Pedidos } from './modulos/Pedidos.tsx';
+import { Clientes } from './modulos/Clientes.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
 
-type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores';
+type Tela = 'inicio' | 'aparencia' | 'caneta' | 'fonte' | 'backup' | 'mostruario' | 'materiais' | 'produtos' | 'fornecedores' | 'pedidos' | 'clientes';
 
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
@@ -21,12 +23,14 @@ const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'materiais', nome: 'Materiais' },
   { id: 'produtos', nome: 'Produtos' },
   { id: 'fornecedores', nome: 'Fornecedores' },
+  { id: 'pedidos', nome: 'Pedidos' },
+  { id: 'clientes', nome: 'Clientes' },
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'aparencia', nome: 'Aparência e marca' },
 ];
 
-const EM_BREVE = ['Pedidos', 'Clientes', 'Financeiro', 'Equipamentos', 'Divulgação', 'Assistente'];
+const EM_BREVE = ['Financeiro', 'Equipamentos', 'Divulgação', 'Assistente'];
 
 export function App() {
   const [prefs, setPrefs] = useTema();
@@ -73,6 +77,8 @@ export function App() {
             {tela === 'materiais' && <Materiais />}
             {tela === 'produtos' && <Produtos />}
             {tela === 'fornecedores' && <Fornecedores />}
+            {tela === 'pedidos' && <Pedidos />}
+            {tela === 'clientes' && <Clientes />}
             {tela === 'mostruario' && <Mostruario />}
             {tela === 'backup' && <Backup />}
           </main>
