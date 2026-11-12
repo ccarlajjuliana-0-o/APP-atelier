@@ -81,3 +81,18 @@ test('cada paleta tem fundo próprio legível nos dois modos; a da marca mantém
   assert.equal(variaveis({ ...PREFERENCIAS_PADRAO, paletaId: 'marca', modo: 'escuro' }, false)['--fundo'], '#1E1726');
   assert.notEqual(fundoDaPaleta(PALETAS.find((x) => x.id === 'mel')!, false), '#FBF7F4');
 });
+
+test('fundo do tema vale no lugar do seu; menu do tema aparece também no modo escuro', () => {
+  const cores = { principal: '#2F6DB3', principalEscuro: '#6FA8E8', apoio: '#D3F0E4', menu: '#8A4F9E', fundo: '#FFF3D6', fundoEscuro: '#1B2A3A' };
+  const claro = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'claro', fundoLivre: '#000000' }, false, cores);
+  assert.equal(claro['--fundo'], '#FFF3D6');
+  assert.ok(contraste(claro['--texto'], claro['--fundo']) >= 7);
+  const escuro = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'escuro' }, true, cores);
+  assert.equal(escuro['--fundo'], '#1B2A3A');
+  assert.ok(contraste(escuro['--texto'], escuro['--fundo']) >= 7);
+  assert.notEqual(escuro['--menu'], '#150F1B');
+  assert.ok(contraste(escuro['--menu'], escuro['--sobre-menu']) >= 7);
+  // sem fundo no tema, o seu fundo escolhido continua valendo
+  const semFundo = variaveis({ ...PREFERENCIAS_PADRAO, modo: 'claro', fundoLivre: '#102030' }, false, { ...cores, fundo: undefined });
+  assert.equal(semFundo['--fundo'], '#102030');
+});

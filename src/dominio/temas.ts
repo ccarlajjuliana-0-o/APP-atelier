@@ -13,6 +13,8 @@ export interface CoresTema {
   principalEscuro: string; // o mesmo, para o modo escuro
   apoio: string;
   menu: string;
+  fundo?: string; // plano de fundo no modo claro (sem isso, usa o da sua paleta)
+  fundoEscuro?: string; // plano de fundo no modo escuro
 }
 
 export type RegraData =
@@ -257,7 +259,7 @@ export function camadasDeFundo(o: { url: string | null; desenho: string; veu: nu
       ? { camadas, tamanho: 'auto, cover', repeticao: 'no-repeat, no-repeat', fixacao: 'scroll, scroll' }
       : { camadas, tamanho: `auto, ${o.tamanho}px auto`, repeticao: 'no-repeat, repeat', fixacao: 'scroll, scroll' };
   }
-  if (o.desenho) return { camadas: `url("${o.desenho}")`, tamanho: '160px 160px', repeticao: 'repeat', fixacao: 'scroll' };
+  if (o.desenho) return { camadas: `url("${o.desenho}")`, tamanho: `${o.tamanho}px ${o.tamanho}px`, repeticao: 'repeat', fixacao: 'scroll' };
   return null;
 }
 

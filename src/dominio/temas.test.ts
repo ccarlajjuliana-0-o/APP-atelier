@@ -126,3 +126,8 @@ test('tema pronto ajustado (mesmo id) substitui o original', () => {
   assert.equal(r.ajustado, true);
   assert.equal(r.personalizado, false);
 });
+
+test('desenho sem imagem respeita o tamanho escolhido', () => {
+  const c = camadasDeFundo({ url: null, desenho: 'data:x', veu: 80, modo: 'unica', tamanho: 240, corVeu: 'var(--fundo)' })!;
+  assert.equal(c.tamanho, '240px 240px');
+});

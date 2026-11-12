@@ -26,7 +26,7 @@ export function PreviaTema({ aparencia, prefs, titulo, grande }: { aparencia: Ap
       <div className="ptela" style={estiloDeCamadas(f.conteudo)}>
         <strong>{titulo || 'Início'}</strong>
         <div className="pcartao">Seu pedido está quase pronto.</div>
-        <span className="pbotao">Botão</span>
+        <div className="plinha"><span className="pbotao">Botão</span><span className="petiqueta">Etiqueta</span></div>
       </div>
     </div>
   );

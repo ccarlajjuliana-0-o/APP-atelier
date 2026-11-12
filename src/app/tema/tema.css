@@ -148,6 +148,9 @@ textarea { padding: 10px 12px; width: 100%; line-height: 1.5; }
 .previa .ptela strong { font-family: var(--fonte-titulo); font-size: 12px; color: var(--texto); }
 .previa .pcartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 8px; padding: 6px; color: var(--texto); }
 .previa .pbotao { align-self: flex-start; background: var(--principal); color: var(--sobre-principal); border-radius: 8px; padding: 3px 9px; font-weight: 700; }
+.previa .plinha { display: flex; gap: 6px; align-items: center; }
+.previa .petiqueta { background: var(--apoio); color: var(--sobre-apoio); border-radius: 8px; padding: 3px 9px; }
+.previa .pcartao { color: var(--texto); }
 .previa.grande { height: 220px; font-size: 12px; }
 .previa.grande .ptela strong { font-size: 15px; }
 

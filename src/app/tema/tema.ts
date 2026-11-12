@@ -153,7 +153,7 @@ export function modoEfetivo(modo: Modo, sistemaEscuro: boolean): 'claro' | 'escu
 
 const MENU_ESCURO = '#150F1B';
 
-export interface CoresDoTema { principal: string; principalEscuro: string; apoio: string; menu: string }
+export interface CoresDoTema { principal: string; principalEscuro: string; apoio: string; menu: string; fundo?: string; fundoEscuro?: string }
 
 /** `tema`: cores de um tema festivo ativo; quando há, valem no lugar da paleta e das cores livres. */
 export function variaveis(p: Preferencias, sistemaEscuro: boolean, tema?: CoresDoTema | null): Record<string, string> {
@@ -161,7 +161,7 @@ export function variaveis(p: Preferencias, sistemaEscuro: boolean, tema?: CoresD
   const base = PALETAS.find((x) => x.id === p.paletaId) ?? PALETAS[0];
   const principal = tema ? (escuro ? tema.principalEscuro : tema.principal) : p.principalLivre ?? (escuro ? base.principalEscuro : base.principal);
   const apoio = tema ? tema.apoio : p.apoioLivre ?? base.apoio;
-  const menu = tema ? (escuro ? MENU_ESCURO : tema.menu) : p.menuLivre ?? (escuro ? MENU_ESCURO : base.menu);
+  const menu = tema ? (escuro ? misturar(tema.menu, MENU_ESCURO, 0.6) : tema.menu) : p.menuLivre ?? (escuro ? MENU_ESCURO : base.menu);
   const menuAtivo = escuro ? misturar(principal, MENU_ESCURO, 0.62) : principal;
   const cor = {
     fundo: escuro ? '#1E1726' : '#FBF7F4',
@@ -174,13 +174,15 @@ export function variaveis(p: Preferencias, sistemaEscuro: boolean, tema?: CoresD
   };
   // Fundo e/ou texto escolhidos por você: o resto (cartões, linhas, texto suave) se ajusta a eles.
   // Sem tema festivo, o fundo acompanha a paleta (a da marca mantém o fundo original).
+  const fundoDoTema = tema ? (escuro ? tema.fundoEscuro : tema.fundo) : undefined;
   const fundoDePaleta = !tema && (escuro ? base.fundoEscuro : base.fundo) !== (escuro ? FUNDO_ESCURO : FUNDO_CLARO) ? fundoDaPaleta(base, escuro) : undefined;
-  const fundoEscolhido = p.fundoLivre ?? fundoDePaleta;
+  const fundoEscolhido = tema ? fundoDoTema ?? p.fundoLivre : p.fundoLivre ?? fundoDePaleta;
+  const fundoPorVoce = !!(fundoDoTema || p.fundoLivre);
   // Um texto ilegível sobre o fundo (contraste < 3) não é aplicado, para a tela nunca "sumir".
   const textoEscolhido = p.textoLivre && contraste(p.textoLivre, fundoEscolhido ?? cor.fundo) >= TEXTO_MINIMO ? p.textoLivre : undefined;
   if (fundoEscolhido || textoEscolhido) {
     const fundo = fundoEscolhido ?? cor.fundo;
-    const texto = textoEscolhido ?? (p.fundoLivre ? textoSobre(fundo) : cor.texto);
+    const texto = textoEscolhido ?? (fundoPorVoce ? textoSobre(fundo) : cor.texto);
     const claro = luminancia(fundo) > 0.5;
     cor.fundo = fundo;
     cor.texto = texto;

@@ -7,6 +7,7 @@ import {
   type AparenciaDoTema, type ImagemDoMenu, type Motivo, type TemaBase, type TemaPersonalizado, type TemaResolvido,
 } from '../../dominio/temas.ts';
 import { PreviaTema } from '../tema/PreviaTema.tsx';
+import { variaveis } from '../tema/tema.ts';
 import { SeletorCor } from '../componentes/SeletorCor.tsx';
 import { dataParaTexto } from '../../dominio/pedidos.ts';
 import { hojeLocal } from '../../dados/pedidos.ts';
@@ -78,7 +79,7 @@ function ModoDaImagem(p: { modo: 'unica' | 'repetida'; aoModo: (m: 'unica' | 're
         <button className="pilula" aria-pressed={p.modo === 'repetida'} onClick={() => p.aoModo('repetida')}>Imagem repetida</button>
       </div>
       {p.modo === 'repetida' && p.aoTamanho && (
-        <Campo rotulo={`Tamanho de cada repetição: ${p.tamanho}px`}>
+        <Campo rotulo={`Tamanho de cada repetição (tela e menu): ${p.tamanho}px`}>
           <input type="range" min={60} max={400} step={20} value={p.tamanho} onChange={(e) => p.aoTamanho!(Number(e.target.value))} />
         </Campo>
       )}
@@ -92,6 +93,8 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
   const pronto = ehPronto(p.inicial.id);
   const comData = t.regra.tipo === 'fixa';
   const regra = t.regra.tipo === 'fixa' ? t.regra : { tipo: 'fixa' as const, mes: 1, dia: 1 };
+  const padraoClaro = variaveis({ ...p.prefs, modo: 'claro', fundoLivre: undefined, textoLivre: undefined }, false)['--fundo'];
+  const padraoEscuro = variaveis({ ...p.prefs, modo: 'escuro', fundoLivre: undefined, textoLivre: undefined }, true)['--fundo'];
   const temFundo = !!t.imagem || t.motivo !== 'nenhum';
 
   function salvar() {
@@ -132,9 +135,15 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
 
       <h3 style={{ margin: '14px 0 6px' }}>Cores</h3>
       <div className="linha" style={{ gap: 18 }}>
-        <div className="item"><SeletorCor rotulo="Botões e destaques" valor={t.cores.principal} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, principal: c } })} />Botões e destaques</div>
+        <div className="item"><SeletorCor rotulo="Botões e destaques" valor={t.cores.principal} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, principal: c, principalEscuro: clarear(c) } })} />Botões e destaques</div>
         <div className="item"><SeletorCor rotulo="Detalhes suaves" valor={t.cores.apoio} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, apoio: c } })} />Detalhes suaves</div>
         <div className="item"><SeletorCor rotulo="Menu lateral" valor={t.cores.menu} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, menu: c } })} />Menu lateral</div>
+        <div className="item">
+          <SeletorCor rotulo="Plano de fundo (modo claro)" valor={t.cores.fundo ?? padraoClaro} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, fundo: c } })} />
+          <SeletorCor rotulo="Plano de fundo (modo escuro)" valor={t.cores.fundoEscuro ?? padraoEscuro} aoMudar={(c) => setT({ ...t, cores: { ...t.cores, fundoEscuro: c } })} />
+          Plano de fundo (claro · escuro)
+          {(t.cores.fundo || t.cores.fundoEscuro) && <button className="btn pequeno" onClick={() => setT({ ...t, cores: { ...t.cores, fundo: undefined, fundoEscuro: undefined } })}>Padrão</button>}
+        </div>
       </div>
 
       <h3 style={{ margin: '14px 0 6px' }}>Fundo da tela</h3>
@@ -157,6 +166,11 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
           <div className="item"><SeletorCor rotulo="Cor do desenho" valor={t.corMotivo} aoMudar={(c) => setT({ ...t, corMotivo: c })} />Cor do desenho</div>
         </div>
       )}
+      {!t.imagem && t.motivo !== 'nenhum' && (
+        <Campo rotulo={`Tamanho do desenho: ${t.tamanho}px`}>
+          <input type="range" min={60} max={400} step={20} value={t.tamanho} onChange={(e) => setT({ ...t, tamanho: Number(e.target.value) })} />
+        </Campo>
+      )}
 
       <h3 style={{ margin: '14px 0 6px' }}>Fundo do menu lateral</h3>
       <div className="linha">
@@ -170,11 +184,11 @@ function Formulario(p: { inicial: TemaPersonalizado; prefs: Preferencias; aoSalv
           <SeletorImagem rotulo="imagem do menu" imagem={t.menuImagemPropria} aoMudar={(menuImagemPropria) => setT({ ...t, menuImagemPropria })} aoErro={setErro} />
         </div>
       )}
-      {t.menuImagem !== 'nenhuma' && (
+      {t.menuImagem === 'propria' && !t.menuImagemPropria && <p className="suave" style={{ fontSize: 13 }}>Envie uma imagem para ver o fundo do menu.</p>}
+      {t.menuImagem === 'mesma' && !t.imagem && temFundo && <p className="suave" style={{ fontSize: 13 }}>Sem imagem, o menu repete o mesmo desenho da tela, no mesmo tamanho.</p>}
+      {(t.menuImagem === 'propria' ? !!t.menuImagemPropria : t.menuImagem === 'mesma' && !!t.imagem) && (
         <div style={{ marginTop: 8 }}>
-          {(t.menuImagem === 'propria' || t.imagem) && (
-            <ModoDaImagem modo={t.menuModo} aoModo={(menuModo) => setT({ ...t, menuModo })} tamanho={t.tamanho} aoTamanho={(tamanho) => setT({ ...t, tamanho })} />
-          )}
+          <ModoDaImagem modo={t.menuModo} aoModo={(menuModo) => setT({ ...t, menuModo })} tamanho={t.tamanho} aoTamanho={(tamanho) => setT({ ...t, tamanho })} />
           <Campo rotulo={`Suavidade no menu: ${t.menuVeu}%`}>
             <input type="range" min={30} max={95} step={5} value={t.menuVeu} onChange={(e) => setT({ ...t, menuVeu: Number(e.target.value) })} />
             <span className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 400 }}>Mais alto deixa a cor do menu mais forte e as letras mais fáceis de ler.</span>
