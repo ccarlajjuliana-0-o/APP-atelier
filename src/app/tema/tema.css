@@ -73,3 +73,4 @@ input[type='color'] { width: 52px; height: 44px; padding: 2px; border: 1px solid
 input[type='month'], input[type='date'] { color: var(--texto); color-scheme: light dark; }
 .aviso .btn { background: #FFFFFF; color: #3E3550; border-color: #C398C8; margin-left: 6px; }
 .tabela td.din { white-space: nowrap; }
+input[type='checkbox'], input[type='radio'] { accent-color: var(--principal); }

@@ -8,6 +8,10 @@ import {
   textoDoPrazo, type Alimentacao, type Equipamento, type Tarefa, type TipoEquipamento, type UnidadeVida,
 } from '../../dominio/equipamentos.ts';
 import { centavosParaTexto } from '../../dominio/dinheiro.ts';
+import { microParaTexto } from '../../dominio/materiais.ts';
+
+/** Custo de uso com casas suficientes para valores abaixo de um centavo (R$ 0,0127 por ciclo). */
+const custoTexto = (centavos: number) => microParaTexto(Math.round(centavos * 10_000));
 import { dataParaTexto } from '../../dominio/pedidos.ts';
 import { CampoFotos, Miniatura } from '../componentes/Fotos.tsx';
 import { Campo, CampoNumero } from './FinanceiroCampos.tsx';
@@ -113,7 +117,7 @@ export function Equipamentos() {
                         </>
                       )}
                     </td>
-                    <td className="din">{uso ? `${centavosParaTexto(Math.round(uso.centavos))} por ${uso.por}` : <span className="suave">—</span>}</td>
+                    <td className="din">{uso ? `${custoTexto(uso.centavos)} por ${uso.por}` : <span className="suave">—</span>}</td>
                     <td><div className="linha" style={{ justifyContent: 'flex-end' }}><button className="btn" onClick={() => setEditando(e)}>Abrir</button></div></td>
                   </tr>
                 );
@@ -196,6 +200,9 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
           </button>
         ))}
       </div>
+      {e.alimentacao === 'manual' && (e.tipo === 'impressora3d' || e.tipo === 'impressao') && (
+        <p className="aviso" style={{ marginTop: 10 }}>Este tipo de equipamento costuma ser elétrico. Escolha “Elétrico” e informe o consumo em watts para somar a energia ao custo.</p>
+      )}
       <div className="formgrid">
         <CampoNumero rotulo="Valor pago" sufixo="R$" valor={e.valorCentavos ? e.valorCentavos / 100 : null} aoMudar={(n) => setE({ ...e, valorCentavos: Math.round((n ?? 0) * 100) })} />
         <CampoNumero rotulo="Vida útil estimada" valor={e.vidaUtil || null} aoMudar={(n) => setE({ ...e, vidaUtil: n ?? 0 })} />
@@ -223,7 +230,7 @@ function Form(p: { inicial: Equipamento; kwh: number; fechar: () => void; aoMuda
         )}
         {uso && (
           <span className="suave">
-            Custo de uso: {centavosParaTexto(Math.round(uso.centavos))} por {uso.por}
+            Custo de uso: {custoTexto(uso.centavos)} por {uso.por}
             {emHoras && e.alimentacao === 'eletrico' && e.potenciaW > 0 && p.kwh === 0 ? ' (sem energia: preencha a tarifa em Financeiro › Ajustes)' : ''}
           </span>
         )}
