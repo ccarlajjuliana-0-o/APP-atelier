@@ -54,6 +54,7 @@ export async function exportarTudo(): Promise<Blob> {
     ajustes: await db.ajustes.toArray(),
     equipamentos,
     publicacoes,
+    preferencias: await db.preferencias.toArray(),
   };
   return new Blob([JSON.stringify(dados)], { type: 'application/json' });
 }
@@ -82,7 +83,7 @@ export async function importarTudo(arquivo: File): Promise<void> {
   const publicacoes = await Promise.all(
     (dados.publicacoes ?? []).map(async (p: any) => ({ ...p, imagens: await Promise.all((p.imagens ?? []).map(base64ParaBlob)) })),
   );
-  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos, db.fornecedores, db.clientes, db.pedidos, db.despesas, db.ajustes, db.equipamentos, db.publicacoes], async () => {
+  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos, db.fornecedores, db.clientes, db.pedidos, db.despesas, db.ajustes, db.equipamentos, db.publicacoes, db.preferencias], async () => {
     await db.materiais.bulkPut(materiais);
     await db.movimentacoes.bulkPut(dados.movimentacoes ?? []);
     await db.fontes.bulkPut(fontes);
@@ -96,6 +97,7 @@ export async function importarTudo(arquivo: File): Promise<void> {
     await db.ajustes.bulkPut(dados.ajustes ?? []);
     await db.equipamentos.bulkPut(equipamentos);
     await db.publicacoes.bulkPut(publicacoes);
+    await db.preferencias.bulkPut(dados.preferencias ?? []);
   });
 }
 

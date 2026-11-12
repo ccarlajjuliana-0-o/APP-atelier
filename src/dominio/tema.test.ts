@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PALETAS, FONTES_CORPO, FONTES_TITULO, FONTES_SCRIPT, variaveis, contraste, textoSobre, urlDasFontes, achar, PREFERENCIAS_PADRAO } from '../app/tema/tema.ts';
+import { PALETAS, FONTES_CORPO, FONTES_TITULO, FONTES_SCRIPT, variaveis, contraste, textoSobre, urlDasFontes, achar, PREFERENCIAS_PADRAO, remotoMaisNovo } from '../app/tema/tema.ts';
 
 test('contraste: preto no branco é máximo e iguais é 1', () => {
   assert.ok(Math.abs(contraste('#000000', '#FFFFFF') - 21) < 0.01);
@@ -39,4 +39,12 @@ test('fontes: padrão, escolha e endereço do Google Fonts', () => {
   assert.equal(urlDasFontes([achar(FONTES_CORPO, 'sistema')]), '');
   const u = urlDasFontes([achar(FONTES_CORPO, 'lato'), achar(FONTES_TITULO, 'playfair'), achar(FONTES_CORPO, 'lato')]);
   assert.equal(u, 'https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@500;600;700&display=swap');
+});
+
+test('visual da nuvem só vale se for mais novo', () => {
+  assert.equal(remotoMaisNovo(undefined, '2026-11-12T10:00:00Z'), true);
+  assert.equal(remotoMaisNovo('2026-11-12T10:00:00Z', '2026-11-12T11:00:00Z'), true);
+  assert.equal(remotoMaisNovo('2026-11-12T11:00:00Z', '2026-11-12T11:00:00Z'), false);
+  assert.equal(remotoMaisNovo('2026-11-12T12:00:00Z', '2026-11-12T11:00:00Z'), false);
+  assert.equal(remotoMaisNovo('2026-11-12T12:00:00Z', undefined), false);
 });

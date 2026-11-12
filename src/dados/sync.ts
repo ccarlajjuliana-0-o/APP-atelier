@@ -184,6 +184,8 @@ function registrarGanchos() {
   db.equipamentos.hook('updating', marcar);
   db.publicacoes.hook('creating', marcar);
   db.publicacoes.hook('updating', marcar);
+  db.preferencias.hook('creating', marcar);
+  db.preferencias.hook('updating', marcar);
 }
 
 /** Liga a sincronização automática: ao abrir, a cada poucos minutos, ao voltar a internet, ao voltar para a aba e ~15 s depois de cada alteração. */

@@ -71,7 +71,7 @@ export function TesteCaneta() {
 
   return (
     <>
-      <h1>Teste da caneta</h1>
+      <h2>Teste da caneta</h2>
       <p className="suave">{info}</p>
       <div className="cartao">
         <canvas ref={tela} className="quadro" onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar} onPointerCancel={aoSoltar} />

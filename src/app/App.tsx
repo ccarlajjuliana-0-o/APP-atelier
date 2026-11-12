@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { AuthGate } from './AuthGate.tsx';
 import { useTema } from './tema/useTema.ts';
 import { Inicio } from './modulos/Inicio.tsx';
-import { Aparencia } from './modulos/Aparencia.tsx';
-import { TesteCaneta } from './modulos/TesteCaneta.tsx';
-import { TesteFonte } from './modulos/TesteFonte.tsx';
+import { Configuracoes } from './modulos/Configuracoes.tsx';
 import { Materiais } from './modulos/Materiais.tsx';
 import { Fornecedores } from './modulos/Fornecedores.tsx';
 import { Produtos } from './modulos/Produtos.tsx';
@@ -24,8 +22,6 @@ import { Nuvem, EstadoNuvem } from './modulos/Nuvem.tsx';
 
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
-  { id: 'caneta', nome: 'Teste da caneta' },
-  { id: 'fonte', nome: 'Teste de fontes' },
   { id: 'materiais', nome: 'Materiais' },
   { id: 'produtos', nome: 'Produtos' },
   { id: 'fornecedores', nome: 'Fornecedores' },
@@ -37,7 +33,7 @@ const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'nuvem', nome: 'Nuvem' },
-  { id: 'aparencia', nome: 'Aparência e marca' },
+  { id: 'configuracoes', nome: 'Configurações' },
 ];
 
 const EM_BREVE: string[] = [];
@@ -89,9 +85,7 @@ export function App() {
               <div className="aviso">Modo local: os dados ficam só neste aparelho. O login com GitHub e a nuvem entram quando o Supabase for configurado.</div>
             )}
             {tela === 'inicio' && <Inicio ir={setTela} />}
-            {tela === 'aparencia' && <Aparencia prefs={prefs} aoMudar={setPrefs} />}
-            {tela === 'caneta' && <TesteCaneta />}
-            {tela === 'fonte' && <TesteFonte />}
+            {tela === 'configuracoes' && <Configuracoes prefs={prefs} aoMudar={setPrefs} />}
             {tela === 'materiais' && <Materiais />}
             {tela === 'produtos' && <Produtos />}
             {tela === 'fornecedores' && <Fornecedores />}

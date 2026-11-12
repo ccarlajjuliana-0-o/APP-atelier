@@ -73,6 +73,7 @@ export interface Preferencias {
   fonteCorpo?: string;
   fonteTitulo?: string;
   fonteScript?: string;
+  atualizadoEm?: string; // usado para sincronizar o visual entre aparelhos
 }
 
 export const PREFERENCIAS_PADRAO: Preferencias = { modo: 'automatico', paletaId: 'marca' };
@@ -157,4 +158,9 @@ export function variaveis(p: Preferencias, sistemaEscuro: boolean): Record<strin
     '--fonte-titulo': achar(FONTES_TITULO, p.fonteTitulo).familia,
     '--fonte-script': achar(FONTES_SCRIPT, p.fonteScript).familia,
   };
+}
+
+/** O visual vindo da nuvem vale se for mais novo do que o guardado neste aparelho. */
+export function remotoMaisNovo(local: string | undefined, remoto: string | undefined): boolean {
+  return !!remoto && (!local || remoto > local);
 }

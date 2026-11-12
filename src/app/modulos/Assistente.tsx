@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { perguntar } from '../../dados/assistente.ts';
 import { PERGUNTAS_SUGERIDAS, type Mensagem } from '../../dominio/assistente.ts';
+import { janelaPadrao, lerJanelaGuardada, limitarJanela, type Janela } from '../../dominio/janela.ts';
+
+const CHAVE_JANELA = 'craft-notes:janela-assistente';
+
+function janelaInicial(): Janela {
+  let guardada: Janela | null = null;
+  try { guardada = lerJanelaGuardada(localStorage.getItem(CHAVE_JANELA)); } catch { /* sem armazenamento */ }
+  return limitarJanela(guardada ?? janelaPadrao(window.innerWidth, window.innerHeight), window.innerWidth, window.innerHeight);
+}
 
 /** Mostra **negrito** como negrito de verdade, sem interpretar mais nada do texto da IA. */
 function Texto({ t }: { t: string }) {
@@ -25,6 +34,42 @@ export function AssistenteFlutuante({ telaAtual }: { telaAtual: string }) {
   const [erro, setErro] = useState('');
   const fim = useRef<HTMLDivElement | null>(null);
   const campo = useRef<HTMLInputElement | null>(null);
+  const [janela, setJanela] = useState<Janela>(janelaInicial);
+  const gesto = useRef<{ tipo: 'mover' | 'tamanho'; px: number; py: number; ini: Janela } | null>(null);
+
+  // Mantém a janela dentro da tela quando a tela muda de tamanho (girar o tablet, por exemplo).
+  useEffect(() => {
+    const ajustar = () => setJanela((j) => limitarJanela(j, window.innerWidth, window.innerHeight));
+    window.addEventListener('resize', ajustar);
+    return () => window.removeEventListener('resize', ajustar);
+  }, []);
+
+  function guardarJanela(j: Janela) {
+    try { localStorage.setItem(CHAVE_JANELA, JSON.stringify(j)); } catch { /* ignora */ }
+  }
+  function comecar(tipo: 'mover' | 'tamanho', e: PointerEvent<HTMLElement>) {
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    gesto.current = { tipo, px: e.clientX, py: e.clientY, ini: janela };
+  }
+  function arrastar(e: PointerEvent<HTMLElement>) {
+    const g = gesto.current;
+    if (!g) return;
+    const dx = e.clientX - g.px;
+    const dy = e.clientY - g.py;
+    const novo = g.tipo === 'mover' ? { ...g.ini, x: g.ini.x + dx, y: g.ini.y + dy } : { ...g.ini, w: g.ini.w + dx, h: g.ini.h + dy };
+    setJanela(limitarJanela(novo, window.innerWidth, window.innerHeight));
+  }
+  function soltar() {
+    if (!gesto.current) return;
+    gesto.current = null;
+    setJanela((j) => { guardarJanela(j); return j; });
+  }
+  function restaurar() {
+    const j = limitarJanela(janelaPadrao(window.innerWidth, window.innerHeight), window.innerWidth, window.innerHeight);
+    setJanela(j);
+    guardarJanela(j);
+  }
 
   useEffect(() => {
     if (aberto) fim.current?.scrollIntoView({ block: 'end' });
@@ -65,9 +110,10 @@ export function AssistenteFlutuante({ telaAtual }: { telaAtual: string }) {
   }
 
   return (
-    <div className="janela-assistente" role="dialog" aria-label="Assistente">
-      <header>
+    <div className="janela-assistente" role="dialog" aria-label="Assistente" style={{ left: janela.x, top: janela.y, width: janela.w, height: janela.h }}>
+      <header onPointerDown={(e) => comecar('mover', e)} onPointerMove={arrastar} onPointerUp={soltar} onPointerCancel={soltar} title="Arraste para mover">
         <strong>Assistente</strong>
+        <button className="btn" style={{ minHeight: 36, padding: '0 12px' }} onClick={restaurar} title="Voltar ao tamanho e lugar padrão">Restaurar</button>
         {conversa.length > 0 && <button className="btn" style={{ minHeight: 36, padding: '0 12px' }} onClick={() => { setConversa([]); setErro(''); }}>Nova conversa</button>}
         <button className="btn" style={{ minHeight: 36, padding: '0 12px' }} onClick={() => setAberto(false)} aria-label="Fechar o assistente">Fechar</button>
       </header>
@@ -96,6 +142,7 @@ export function AssistenteFlutuante({ telaAtual }: { telaAtual: string }) {
         <input ref={campo} type="text" aria-label="Sua pergunta" placeholder="Pergunte algo sobre o ateliê…" style={{ flex: 1, minWidth: 0 }} value={texto} onChange={(e) => setTexto(e.target.value)} />
         <button className="btn primario" type="submit" disabled={pensando || !texto.trim()}>Enviar</button>
       </form>
+      <div className="alca" role="presentation" title="Arraste para mudar o tamanho" onPointerDown={(e) => comecar('tamanho', e)} onPointerMove={arrastar} onPointerUp={soltar} onPointerCancel={soltar} />
     </div>
   );
 }

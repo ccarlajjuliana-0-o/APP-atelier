@@ -73,7 +73,7 @@ export function TesteFonte() {
 
   return (
     <>
-      <h1>Teste de fontes</h1>
+      <h2>Teste de fontes</h2>
       <p className="suave">Envie fontes .ttf ou .otf para usar nos projetos.</p>
       <div className="cartao">
         <label className="btn primario" style={{ display: 'inline-flex', alignItems: 'center' }}>

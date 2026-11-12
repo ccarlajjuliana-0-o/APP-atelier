@@ -40,7 +40,6 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
 
   return (
     <>
-      <h1>Aparência e marca</h1>
       <p className="suave">Estas escolhas ficam guardadas neste aparelho. No tablet, escolha de novo do seu jeito.</p>
       <div className="grade">
         <section className="cartao">
