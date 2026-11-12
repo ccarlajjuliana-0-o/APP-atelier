@@ -5,6 +5,7 @@ import { textoDoPrazo } from '../../dominio/equipamentos.ts';
 import { STATUS, dataParaTexto } from '../../dominio/pedidos.ts';
 import { etapasDoPedido, textoDoPrazoPedido, textoUltimaPublicacao, type PedidoComPrazo } from '../../dominio/painel.ts';
 import type { Tela } from '../telas.ts';
+import type { TemaResolvido } from '../../dominio/temas.ts';
 
 const MAX = 6;
 
@@ -36,7 +37,7 @@ function Prazo({ p }: { p: PedidoComPrazo }) {
 
 const mais = (total: number) => (total > MAX ? <p className="suave" style={{ margin: '6px 0 0' }}>e mais {total - MAX}</p> : null);
 
-export function Inicio({ ir }: { ir: (t: Tela) => void }) {
+export function Inicio({ ir, tema }: { ir: (t: Tela) => void; tema?: TemaResolvido | null }) {
   const [d, setD] = useState<Painel | null>(null);
   useEffect(() => {
     void carregarPainel().then(setD);
@@ -60,6 +61,15 @@ export function Inicio({ ir }: { ir: (t: Tela) => void }) {
       <h1>Craft Notes Unique</h1>
       <p className="suave">atelier criativo · {data}</p>
       <div className="faixa" />
+
+      {tema && tema.saudacao && (
+        <div className="saudacao">
+          <strong>{tema.saudacao}</strong>
+          <span style={{ fontSize: 13 }}>
+            Tema {tema.nome}{tema.fim ? ` até ${dataParaTexto(tema.fim)}` : ' (escolhido por você)'} · <button className="btn" style={{ minHeight: 32, padding: '0 12px' }} onClick={() => ir('configuracoes')}>Mudar tema</button>
+          </span>
+        </div>
+      )}
 
       <div className="resumo">
         <div className="bloco"><strong>{abertos}</strong><span>pedido(s) em aberto</span></div>

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { liveQuery } from 'dexie';
 import { db, type PreferenciasRegistro } from '../../dados/db.ts';
+import { hojeLocal } from '../../dados/pedidos.ts';
+import { resolverTema, svgDoMotivo, type TemaPersonalizado, type TemaResolvido } from '../../dominio/temas.ts';
 import {
   FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PREFERENCIAS_PADRAO, achar, remotoMaisNovo, urlDasFontes, variaveis, type Preferencias,
 } from './tema.ts';
@@ -30,7 +32,7 @@ function guardarLocal(p: Preferencias): void {
  * Visual do app. Fica guardado no aparelho (abre sem piscar) e também na nuvem, para o tablet abrir igual:
  * o que for alterado mais recentemente vale.
  */
-export function useTema(): [Preferencias, (p: Preferencias) => void] {
+export function useTema(): [Preferencias, (p: Preferencias) => void, TemaResolvido | null] {
   const [prefs, setPrefsEstado] = useState<Preferencias>(() => ler().prefs);
   const atual = useRef(prefs);
   atual.current = prefs;
@@ -43,11 +45,52 @@ export function useTema(): [Preferencias, (p: Preferencias) => void] {
     return () => mq.removeEventListener('change', ouvir);
   }, []);
 
+  // Tema festivo: depende da data de hoje e dos temas criados por você.
+  const [personalizados, setPersonalizados] = useState<TemaPersonalizado[]>([]);
+  const [hoje, setHoje] = useState<string>(() => hojeLocal());
   useEffect(() => {
-    const v = variaveis(prefs, sistemaEscuro);
+    const inscricao = liveQuery(() => db.temas.toArray()).subscribe({ next: setPersonalizados, error: () => undefined });
+    const atualizarDia = () => setHoje(hojeLocal());
+    const relogio = window.setInterval(atualizarDia, 30 * 60_000);
+    document.addEventListener('visibilitychange', atualizarDia);
+    return () => {
+      inscricao.unsubscribe();
+      window.clearInterval(relogio);
+      document.removeEventListener('visibilitychange', atualizarDia);
+    };
+  }, []);
+  const tema = useMemo(
+    () => resolverTema(prefs, personalizados, hoje),
+    [prefs.temaFestivo, prefs.temaDiasAntes, prefs.temaDiasDepois, personalizados, hoje], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  useEffect(() => {
+    const raiz = document.documentElement.style;
+    const limpar = () => ['--fundo-camadas', '--fundo-tamanho', '--fundo-repeticao', '--fundo-fixacao'].forEach((k) => raiz.removeProperty(k));
+    if (!tema) return limpar();
+    if (tema.imagem) {
+      const url = URL.createObjectURL(tema.imagem);
+      const veu = `color-mix(in srgb, var(--fundo) ${tema.veu}%, transparent)`;
+      raiz.setProperty('--fundo-camadas', `linear-gradient(${veu}, ${veu}), url("${url}")`);
+      raiz.setProperty('--fundo-tamanho', 'auto, cover');
+      raiz.setProperty('--fundo-repeticao', 'no-repeat, no-repeat');
+      raiz.setProperty('--fundo-fixacao', 'fixed, fixed');
+      return () => URL.revokeObjectURL(url);
+    }
+    const desenho = svgDoMotivo(tema.motivo, tema.corMotivo);
+    if (!desenho) return limpar();
+    raiz.setProperty('--fundo-camadas', `url("${desenho}")`);
+    raiz.setProperty('--fundo-tamanho', '160px 160px');
+    raiz.setProperty('--fundo-repeticao', 'repeat');
+    raiz.setProperty('--fundo-fixacao', 'scroll');
+    return limpar;
+  }, [tema?.id, tema?.imagem, tema?.veu, tema?.motivo, tema?.corMotivo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const v = variaveis(prefs, sistemaEscuro, tema?.cores ?? null);
     for (const [k, val] of Object.entries(v)) document.documentElement.style.setProperty(k, val);
     carregarFontes('tema', urlDasFontes([achar(FONTES_CORPO, prefs.fonteCorpo), achar(FONTES_TITULO, prefs.fonteTitulo), achar(FONTES_SCRIPT, prefs.fonteScript)]));
-  }, [prefs, sistemaEscuro]);
+  }, [prefs, sistemaEscuro, tema?.cores]);
 
   // Mudança feita pela pessoa: guarda no aparelho e no banco local (que vai para a nuvem).
   const mudar = useCallback((p: Preferencias) => {
@@ -82,5 +125,5 @@ export function useTema(): [Preferencias, (p: Preferencias) => void] {
     return () => inscricao.unsubscribe();
   }, []);
 
-  return [prefs, mudar];
+  return [prefs, mudar, tema];
 }

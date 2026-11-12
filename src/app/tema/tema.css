@@ -25,7 +25,7 @@ button { cursor: pointer; }
   display: flex; flex-direction: column; padding: 20px 14px; gap: 4px; overflow-y: auto;
 }
 .marca { display: flex; align-items: center; gap: 10px; padding: 0 4px 16px; }
-.marca img { width: 40px; height: 40px; border-radius: 14px; display: block; flex: none; }
+.marca img { width: 40px; height: 40px; border-radius: 14px; display: block; flex: none; object-fit: contain; }
 .marca strong { display: block; font-family: var(--fonte-script); font-weight: 400; font-size: 24px; color: var(--sobre-menu); line-height: 1.1; }
 .marca span { font-family: var(--fonte-titulo); font-size: 12px; letter-spacing: 0.15em; color: var(--sobre-menu); opacity: 0.8; }
 .menu .suave { color: var(--sobre-menu); opacity: 0.75; }
@@ -38,7 +38,7 @@ button { cursor: pointer; }
 .menu .em-breve { margin-left: auto; font-size: 11px; opacity: 0.8; }
 .menu .espaco { flex: 1; }
 
-.conteudo { flex: 1; min-width: 0; padding: 28px 32px 110px; overflow-y: auto; }
+.conteudo { flex: 1; min-width: 0; padding: 28px 32px 110px; overflow-y: auto; background-color: var(--fundo); background-image: var(--fundo-camadas, none); background-size: var(--fundo-tamanho, auto); background-repeat: var(--fundo-repeticao, repeat); background-attachment: var(--fundo-fixacao, scroll); }
 h1, h2, h3 { font-family: var(--fonte-titulo); }
 h1 { margin: 0 0 4px; font-size: 32px; font-weight: 700; }
 h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; color: var(--principal); }
@@ -127,3 +127,13 @@ textarea { padding: 10px 12px; width: 100%; line-height: 1.5; }
 @media (max-width: 700px) { .conteudo { padding: 20px 16px 110px; } }
 .janela-assistente .alca { position: absolute; right: 0; bottom: 0; width: 26px; height: 26px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 0 55%, var(--borda) 55% 62%, transparent 62% 72%, var(--borda) 72% 79%, transparent 79%); }
 .janela-assistente form { padding-right: 30px; }
+
+/* Temas festivos */
+.saudacao { background: var(--apoio); color: var(--sobre-apoio); border-radius: 18px; padding: 14px 18px; margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.saudacao strong { font-family: var(--fonte-titulo); font-size: 17px; }
+.tema-cartao { border: 1px solid var(--borda); border-radius: 18px; background: var(--cartao); overflow: hidden; display: flex; flex-direction: column; }
+.tema-cartao[aria-current='true'] { border-color: var(--principal); box-shadow: 0 0 0 2px var(--principal); }
+.tema-cartao .amostra { height: 74px; background-size: 160px 160px; display: flex; align-items: flex-end; gap: 6px; padding: 8px; background-color: var(--fundo); }
+.tema-cartao .amostra i { width: 22px; height: 22px; border-radius: 11px; border: 1px solid rgba(0, 0, 0, 0.18); display: inline-block; }
+.tema-cartao .corpo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.logo-previa { width: 72px; height: 72px; border-radius: 18px; object-fit: contain; background: var(--neutro); border: 1px solid var(--borda); }

@@ -1,4 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
+import { prepararLogo } from '../../dados/imagem.ts';
+import { salvarLogo } from '../../dados/temas.ts';
+import { useLogo } from '../componentes/Logo.tsx';
 import {
   FONTES_CORPO, FONTES_SCRIPT, FONTES_TITULO, PALETAS, PREFERENCIAS_PADRAO, achar, urlDasFontes, type Fonte, type Modo, type Preferencias,
 } from '../tema/tema.ts';
@@ -29,6 +32,47 @@ function EscolhaDeFonte(p: { titulo: string; dica: string; fontes: Fonte[]; esco
   );
 }
 
+function CartaoLogo() {
+  const { url, personalizada } = useLogo();
+  const [msg, setMsg] = useState('');
+  const [erro, setErro] = useState('');
+
+  async function enviar(e: ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    setErro('');
+    setMsg('');
+    try {
+      await salvarLogo(await prepararLogo(arquivo));
+      setMsg('Logo atualizada. Ela aparece no menu e na tela de entrada.');
+    } catch (x) {
+      setErro(x instanceof Error ? x.message : 'Não consegui usar essa imagem.');
+    }
+  }
+
+  return (
+    <section className="cartao" style={{ marginTop: 0 }}>
+      <h2>Logomarca</h2>
+      <div className="linha" style={{ gap: 16, alignItems: 'center' }}>
+        <img className="logo-previa" src={url} alt="Logomarca atual" />
+        <div>
+          <div className="linha">
+            <label className="btn" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              Enviar nova logo
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => void enviar(e)} />
+            </label>
+            {personalizada && <button className="btn" onClick={() => void salvarLogo(null).then(() => setMsg('Voltou à logo original.'))}>Voltar à original</button>}
+          </div>
+          <p className="suave" style={{ margin: '8px 0 0', fontSize: 13 }}>PNG com fundo transparente fica melhor. Vale para o menu e a tela de entrada, e vai para a nuvem junto com o resto. O ícone do app instalado no aparelho não muda por aqui.</p>
+        </div>
+      </div>
+      {msg && <p role="status" className="ok">{msg}</p>}
+      {erro && <p className="aviso" role="alert">{erro}</p>}
+    </section>
+  );
+}
+
 export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p: Preferencias) => void }) {
   const paleta = PALETAS.find((p) => p.id === prefs.paletaId) ?? PALETAS[0];
 
@@ -42,6 +86,7 @@ export function Aparencia({ prefs, aoMudar }: { prefs: Preferencias; aoMudar: (p
     <>
       <p className="suave">Estas escolhas ficam guardadas neste aparelho. No tablet, escolha de novo do seu jeito.</p>
       <div className="grade">
+        <CartaoLogo />
         <section className="cartao">
           <h2>Modo</h2>
           <div className="linha">

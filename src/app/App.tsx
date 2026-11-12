@@ -13,6 +13,7 @@ import { Equipamentos } from './modulos/Equipamentos.tsx';
 import { Divulgacao } from './modulos/Divulgacao.tsx';
 import { AssistenteFlutuante } from './modulos/Assistente.tsx';
 import type { Tela } from './telas.ts';
+import { Logo } from './componentes/Logo.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
@@ -45,7 +46,7 @@ function SincronizacaoAutomatica() {
 }
 
 export function App() {
-  const [prefs, setPrefs] = useTema();
+  const [prefs, setPrefs, temaAtivo] = useTema();
   const [tela, setTela] = useState<Tela>('inicio');
 
   return (
@@ -55,7 +56,7 @@ export function App() {
           {!modoLocal && <SincronizacaoAutomatica />}
           <nav className="menu" aria-label="Menu principal">
             <div className="marca">
-              <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="Logomarca Craft Notes Unique" />
+              <Logo alt="Logomarca Craft Notes Unique" />
               <div>
                 <strong>Craft Notes Unique</strong>
                 <span>atelier criativo</span>
@@ -84,8 +85,8 @@ export function App() {
             {modoLocal && (
               <div className="aviso">Modo local: os dados ficam só neste aparelho. O login com GitHub e a nuvem entram quando o Supabase for configurado.</div>
             )}
-            {tela === 'inicio' && <Inicio ir={setTela} />}
-            {tela === 'configuracoes' && <Configuracoes prefs={prefs} aoMudar={setPrefs} />}
+            {tela === 'inicio' && <Inicio ir={setTela} tema={temaAtivo} />}
+            {tela === 'configuracoes' && <Configuracoes prefs={prefs} aoMudar={setPrefs} tema={temaAtivo} />}
             {tela === 'materiais' && <Materiais />}
             {tela === 'produtos' && <Produtos />}
             {tela === 'fornecedores' && <Fornecedores />}

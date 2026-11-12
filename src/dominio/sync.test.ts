@@ -52,5 +52,6 @@ test('tabelas sincronizadas', () => {
   assert.ok(TABELAS_SINCRONIZADAS.includes('equipamentos'));
   assert.ok(TABELAS_SINCRONIZADAS.includes('publicacoes'));
   assert.ok(TABELAS_SINCRONIZADAS.includes('preferencias'));
+  assert.ok(TABELAS_SINCRONIZADAS.includes('temas') && TABELAS_SINCRONIZADAS.includes('identidade'));
   assert.ok(!(TABELAS_SINCRONIZADAS as readonly string[]).includes('fontes'));
 });

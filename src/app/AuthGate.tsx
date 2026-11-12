@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { nuvem, entrarComGitHub } from '../dados/nuvem.ts';
+import { Logo } from './componentes/Logo.tsx';
 
 export function AuthGate({ children }: { children: (modoLocal: boolean) => ReactNode }) {
   const [carregando, setCarregando] = useState(true);
@@ -24,7 +25,7 @@ export function AuthGate({ children }: { children: (modoLocal: boolean) => React
     return (
       <div className="centro">
         <div className="cartao">
-          <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="Craft Notes Unique" width={96} height={96} style={{ borderRadius: 18 }} />
+          <Logo alt="Craft Notes Unique" largura={96} estilo={{ borderRadius: 18, objectFit: 'contain' }} />
           <h1>Craft Notes Unique</h1>
           <p className="suave">atelier criativo</p>
           <button className="btn primario" onClick={() => void entrarComGitHub()}>

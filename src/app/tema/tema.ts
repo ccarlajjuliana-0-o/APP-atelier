@@ -73,6 +73,9 @@ export interface Preferencias {
   fonteCorpo?: string;
   fonteTitulo?: string;
   fonteScript?: string;
+  temaFestivo?: string; // 'automatico' (padrão), 'desligado' ou o id de um tema
+  temaDiasAntes?: number;
+  temaDiasDepois?: number;
   atualizadoEm?: string; // usado para sincronizar o visual entre aparelhos
 }
 
@@ -131,13 +134,16 @@ export function modoEfetivo(modo: Modo, sistemaEscuro: boolean): 'claro' | 'escu
 
 const MENU_ESCURO = '#150F1B';
 
-export function variaveis(p: Preferencias, sistemaEscuro: boolean): Record<string, string> {
+export interface CoresDoTema { principal: string; principalEscuro: string; apoio: string; menu: string }
+
+/** `tema`: cores de um tema festivo ativo; quando há, valem no lugar da paleta e das cores livres. */
+export function variaveis(p: Preferencias, sistemaEscuro: boolean, tema?: CoresDoTema | null): Record<string, string> {
   const escuro = modoEfetivo(p.modo, sistemaEscuro) === 'escuro';
   const base = PALETAS.find((x) => x.id === p.paletaId) ?? PALETAS[0];
-  const principal = p.principalLivre ?? (escuro ? base.principalEscuro : base.principal);
-  const apoio = p.apoioLivre ?? base.apoio;
-  const menu = p.menuLivre ?? (escuro ? MENU_ESCURO : base.menu);
-  const menuAtivo = escuro ? misturar(p.principalLivre ?? base.principalEscuro, MENU_ESCURO, 0.62) : misturar(p.principalLivre ?? base.principal, menu, 0.0);
+  const principal = tema ? (escuro ? tema.principalEscuro : tema.principal) : p.principalLivre ?? (escuro ? base.principalEscuro : base.principal);
+  const apoio = tema ? tema.apoio : p.apoioLivre ?? base.apoio;
+  const menu = tema ? (escuro ? MENU_ESCURO : tema.menu) : p.menuLivre ?? (escuro ? MENU_ESCURO : base.menu);
+  const menuAtivo = escuro ? misturar(principal, MENU_ESCURO, 0.62) : principal;
   return {
     '--fundo': escuro ? '#1E1726' : '#FBF7F4',
     '--cartao': escuro ? '#2A2036' : '#FFFFFF',

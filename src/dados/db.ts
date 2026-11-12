@@ -8,6 +8,7 @@ import type { Ajustes, Despesa } from '../dominio/financeiro.ts';
 import type { Equipamento } from '../dominio/equipamentos.ts';
 import type { Publicacao } from '../dominio/divulgacao.ts';
 import type { Preferencias } from '../app/tema/tema.ts';
+import type { TemaPersonalizado } from '../dominio/temas.ts';
 
 export interface Material {
   id: string;
@@ -123,6 +124,12 @@ export interface PreferenciasRegistro extends Preferencias {
   atualizadoEm: string;
 }
 
+export interface IdentidadeRegistro {
+  id: 'logo';
+  imagem: Blob | null; // null = volta à logo original
+  atualizadoEm: string;
+}
+
 class BancoAtelie extends Dexie {
   materiais!: Table<Material, string>;
   movimentacoes!: Table<MovimentacaoRegistro, string>;
@@ -138,6 +145,8 @@ class BancoAtelie extends Dexie {
   equipamentos!: Table<Equipamento, string>;
   publicacoes!: Table<Publicacao, string>;
   preferencias!: Table<PreferenciasRegistro, string>;
+  temas!: Table<TemaPersonalizado, string>;
+  identidade!: Table<IdentidadeRegistro, string>;
 
   constructor() {
     super('craft-notes-atelie');
@@ -156,6 +165,7 @@ class BancoAtelie extends Dexie {
     this.version(8).stores({ equipamentos: 'id, nome, tipo' });
     this.version(9).stores({ publicacoes: 'id, data, status' });
     this.version(10).stores({ preferencias: 'id' });
+    this.version(11).stores({ temas: 'id', identidade: 'id' });
   }
 }
 
