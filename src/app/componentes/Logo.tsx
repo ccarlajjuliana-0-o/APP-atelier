@@ -4,7 +4,7 @@ import { db } from '../../dados/db.ts';
 
 /** A logo que você enviou (ou a original). Atualiza sozinha quando ela muda, inclusive vinda da nuvem. */
 export function useLogo(): { url: string; personalizada: boolean } {
-  const original = `${import.meta.env.BASE_URL}icons/icon-192.png`;
+  const original = `${import.meta.env.BASE_URL}icons/logo-simbolo.png`;
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let atual: string | null = null;
