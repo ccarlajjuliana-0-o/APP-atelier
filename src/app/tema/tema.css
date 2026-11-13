@@ -137,7 +137,7 @@ textarea { padding: 10px 12px; width: 100%; line-height: 1.5; }
 .tema-cartao .amostra { height: 74px; background-size: 160px 160px; display: flex; align-items: flex-end; gap: 6px; padding: 8px; background-color: var(--fundo); }
 .tema-cartao .amostra i { width: 22px; height: 22px; border-radius: 11px; border: 1px solid rgba(0, 0, 0, 0.18); display: inline-block; }
 .tema-cartao .corpo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-.logo-previa { width: 72px; height: 72px; border-radius: 18px; object-fit: contain; background: var(--neutro); border: 1px solid var(--borda); }
+.logo-previa { width: 72px; height: 72px; object-fit: contain; }
 
 /* pré-visualização de tema: uma tela em miniatura */
 .previa { display: flex; border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; height: 150px; background: var(--fundo); font-size: 10px; }
