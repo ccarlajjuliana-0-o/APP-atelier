@@ -1,6 +1,7 @@
 // Pedidos: status, valores, entrada de 50%, prazo em dias úteis e necessidade de material.
 import { PRAZO_DIAS_UTEIS, adicionarDiasUteis, type TipoPedido } from './prazo.ts';
 import { qtdEfetiva, type ItemProduto } from './produtos.ts';
+import type { EscolhaItem } from './opcoes.ts';
 
 export type StatusPedido = 'orcamento' | 'confirmado' | 'em_producao' | 'pronto' | 'entregue' | 'cancelado';
 
@@ -40,6 +41,8 @@ export interface ItemPedido {
   adesivoId: string | null;
   adesivoNome: string;
   observacao: string; // nome a gravar, cor, detalhes
+  escolhas?: EscolhaItem[]; // opções do formulário personalizado
+  precoBaseCentavos?: number; // preço sem as opções (precoUnit = base + opções)
 }
 
 export interface Pagamento {
@@ -127,6 +130,10 @@ export function necessidades(
       if (!(q > 0)) continue;
       const alvo = r.extra ? extra : essencial;
       alvo[r.materialId] = (alvo[r.materialId] ?? 0) + q;
+    }
+    for (const e of it.escolhas ?? []) {
+      if (!e.materialId || !(e.quantidade > 0)) continue;
+      essencial[e.materialId] = (essencial[e.materialId] ?? 0) + e.quantidade * it.quantidade;
     }
   }
   const ids = new Set([...Object.keys(essencial), ...Object.keys(extra)]);

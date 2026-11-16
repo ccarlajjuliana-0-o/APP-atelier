@@ -5,6 +5,7 @@ import { CampoFotos, Miniatura } from '../componentes/Fotos.tsx';
 import { duplicarProduto, listarProdutos, salvarProduto } from '../../dados/produtos.ts';
 import { CATEGORIAS, UNIDADES, lerNumero, microParaTexto } from '../../dominio/materiais.ts';
 import { centavosParaTexto } from '../../dominio/dinheiro.ts';
+import { EditorOpcoes, gruposParaForm, gruposDoForm, type GrupoForm } from '../componentes/EditorOpcoes.tsx';
 import { LINHAS, resumoProduto, type InfoMaterial, type ItemProduto, type Linha, type Perfil3D } from '../../dominio/produtos.ts';
 
 const PERFIL_PADRAO: Perfil3D = {
@@ -178,6 +179,7 @@ function FormProduto(p: {
   const [itens, setItens] = useState<LinhaForm[]>(
     p.inicial.receita.map((i) => ({ materialId: i.materialId, quantidade: String(i.quantidade).replace('.', ','), desperdicio: i.desperdicioPct ? String(i.desperdicioPct).replace('.', ',') : '', extra: i.extra })),
   );
+  const [grupos, setGrupos] = useState<GrupoForm[]>(gruposParaForm(p.inicial.opcoes ?? []));
   const [perfil, setPerfil] = useState<Perfil3D>(p.inicial.perfil3d ?? PERFIL_PADRAO);
   const [fotos, setFotos] = useState<Blob[]>(p.inicial.fotos ?? []);
   const [erro, setErro] = useState('');
@@ -210,11 +212,15 @@ function FormProduto(p: {
     for (const i of itensNum) {
       if (!(i.quantidade > 0)) return setErro(`Informe a quantidade de “${infoDe(i.materialId)?.nome ?? 'material'}” por unidade (maior que zero).`);
     }
+    const gruposNum = gruposDoForm(grupos);
+    const semNome = gruposNum.find((g) => !g.nome || g.opcoes.some((o) => !o.nome));
+    if (semNome) return setErro('Dê um nome a cada grupo e a cada opção do formulário personalizado.');
     const salvo = await salvarProduto({
       ...p.inicial,
       nome: n, linha, categoria: categoria.trim(), tempoTrabalhoMin: t,
       precoCentavos: pc === null ? null : Math.round(pc * 100),
       receita: itensNum,
+      opcoes: gruposNum,
       perfil3d: linha === 'impressao3d' ? perfil : null,
       fotos,
       ativo: arquivar === undefined ? p.inicial.ativo !== false : !arquivar,
@@ -311,6 +317,8 @@ function FormProduto(p: {
         {r.extrasEmFalta.length > 0 && <div className="suave">Extra em falta: {r.extrasEmFalta.map((id) => infoDe(id)?.nome).join(', ')}. O produto sai sem ele.</div>}
         {r.semCusto.length > 0 && <div className="suave">Ainda sem custo (registre uma compra): {r.semCusto.map((id) => infoDe(id)?.nome).join(', ')}.</div>}
       </div>
+
+      <EditorOpcoes grupos={grupos} aoMudar={setGrupos} materiais={p.materiais} info={p.info} />
 
       {linha === 'impressao3d' && (
         <>

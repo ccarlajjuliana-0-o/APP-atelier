@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type { Movimentacao } from '../dominio/estoque.ts';
 import type { Categoria, Unidade } from '../dominio/materiais.ts';
 import type { ItemProduto, Linha, Perfil3D } from '../dominio/produtos.ts';
+import type { GrupoOpcoes } from '../dominio/opcoes.ts';
 import type { ItemPedido, Pagamento, Reserva, StatusPedido } from '../dominio/pedidos.ts';
 import type { TipoPedido } from '../dominio/prazo.ts';
 import type { Ajustes, Despesa } from '../dominio/financeiro.ts';
@@ -42,6 +43,8 @@ export interface FonteRegistro {
   ativa: boolean;
   arquivo: Blob;
   criadoEm: string;
+  atualizadoEm?: string;
+  removida?: boolean; // "remover" só esconde (nada é apagado da nuvem)
 }
 
 export interface TracoRegistro {
@@ -84,6 +87,7 @@ export interface Produto {
   tempoTrabalhoMin: number;
   precoCentavos: number | null; // preço de venda atual (o sugerido vem na precificação)
   receita: ItemProduto[];
+  opcoes?: GrupoOpcoes[]; // formulário personalizado: escolhas do cliente ligadas ao estoque
   perfil3d: Perfil3D | null;
   fotos?: Blob[];
   ativo: boolean;
@@ -166,6 +170,8 @@ class BancoAtelie extends Dexie {
     this.version(9).stores({ publicacoes: 'id, data, status' });
     this.version(10).stores({ preferencias: 'id' });
     this.version(11).stores({ temas: 'id', identidade: 'id' });
+    // As fontes passam a ir para a nuvem: as que já existem neste aparelho são marcadas como alteradas agora, para serem enviadas.
+    this.version(12).stores({}).upgrade((tx) => tx.table('fontes').toCollection().modify((f) => { f.atualizadoEm = new Date().toISOString(); }));
   }
 }
 

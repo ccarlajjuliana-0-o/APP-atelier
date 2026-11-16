@@ -6,7 +6,10 @@ import {
   avancarPedido, cancelarPedido, disponiveis, hojeLocal, listarClientes, listarPedidos, pedidoNovo,
   registrarPagamento, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
-import { centavosParaTexto } from '../../dominio/dinheiro.ts';
+import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
+import {
+  acrescimoTotal, alternarEscolha, escolhasPadrao, gruposPendentes, opcaoDisponivel, resumoEscolhas, type EscolhaItem,
+} from '../../dominio/opcoes.ts';
 import { formatarQuantidade, lerNumero } from '../../dominio/materiais.ts';
 import {
   ABERTOS, AVANCO, STATUS, TEXTO_PAGAMENTO, TIPOS, atrasado, dataParaTexto, dataPrometida as dataPrometidaDe, entradaCentavos, necessidades,
@@ -38,6 +41,7 @@ export function Pedidos() {
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [disp, setDisp] = useState<Record<string, number>>({});
   const [mostruario, setMostruario] = useState<MostruarioRegistro[]>([]);
+  const [mult, setMult] = useState({ encadernacao: 1, impressao3d: 1 });
   const [filtro, setFiltro] = useState<Filtro>('abertos');
   const [aberto, setAberto] = useState<Pedido | null>(null);
   const [msg, setMsg] = useState('');
@@ -51,6 +55,8 @@ export function Pedidos() {
     setMateriais(await listarMateriais());
     setDisp(await disponiveis());
     setMostruario((await db.mostruario.toArray()).filter((m) => m.visivel));
+    const aj = await db.ajustes.get('financeiro');
+    setMult({ encadernacao: aj?.multiplicadorEncadernacao ?? 1, impressao3d: aj?.multiplicador3d ?? 1 });
   }
   useEffect(() => {
     void recarregar();
@@ -102,6 +108,7 @@ export function Pedidos() {
             mostruario={mostruario}
             disp={disp}
             info={info}
+            mult={mult}
             fechar={() => setAberto(null)}
             aoMudar={async (texto, reabrir) => {
               setMsg(texto);
@@ -167,10 +174,11 @@ interface ItemForm {
   modeloId: string;
   adesivoId: string;
   observacao: string;
+  escolhas: EscolhaItem[];
 }
 
 function itemVazio(): ItemForm {
-  return { produtoId: '', descricao: '', quantidade: '1', preco: '', modeloId: '', adesivoId: '', observacao: '' };
+  return { produtoId: '', descricao: '', quantidade: '1', preco: '', modeloId: '', adesivoId: '', observacao: '', escolhas: [] };
 }
 
 function Detalhe(p: {
@@ -181,6 +189,7 @@ function Detalhe(p: {
   mostruario: MostruarioRegistro[];
   disp: Record<string, number>;
   info: Record<string, InfoMaterial>;
+  mult: { encadernacao: number; impressao3d: number };
   fechar: () => void;
   aoMudar: (msg: string, reabrir?: Pedido | null) => Promise<void>;
 }) {
@@ -193,8 +202,8 @@ function Detalhe(p: {
   const [obs, setObs] = useState(ini.observacoes);
   const [itens, setItens] = useState<ItemForm[]>(
     ini.itens.map((i) => ({
-      produtoId: i.produtoId ?? '', descricao: i.descricao, quantidade: String(i.quantidade), preco: reais(i.precoUnitCentavos),
-      modeloId: i.modeloId ?? '', adesivoId: i.adesivoId ?? '', observacao: i.observacao,
+      produtoId: i.produtoId ?? '', descricao: i.descricao, quantidade: String(i.quantidade), preco: reais(i.precoBaseCentavos ?? i.precoUnitCentavos),
+      modeloId: i.modeloId ?? '', adesivoId: i.adesivoId ?? '', observacao: i.observacao, escolhas: i.escolhas ?? [],
     })),
   );
   const [erro, setErro] = useState('');
@@ -212,11 +221,14 @@ function Detalhe(p: {
     return itens.map((i) => {
       const q = lerNumero(i.quantidade);
       const pr = lerNumero(i.preco || '0');
+      const base = Number.isNaN(pr) ? 0 : Math.round(pr * 100);
+      const comOpcoes = i.escolhas.length > 0;
       return {
         produtoId: i.produtoId || null,
         descricao: i.descricao.trim(),
         quantidade: Number.isNaN(q) ? 0 : Math.max(0, Math.round(q)),
-        precoUnitCentavos: Number.isNaN(pr) ? 0 : Math.round(pr * 100),
+        precoUnitCentavos: base + acrescimoTotal(i.escolhas),
+        ...(comOpcoes ? { escolhas: i.escolhas, precoBaseCentavos: base } : {}),
         modeloId: i.modeloId || null,
         modeloNome: modelos.find((m) => m.id === i.modeloId)?.nome ?? '',
         adesivoId: i.adesivoId || null,
@@ -235,7 +247,11 @@ function Detalhe(p: {
   const needs = editavelItens ? necessidades(itensNum, receitas, p.disp) : [];
   const custoMaterial = itensNum.reduce((s, i) => {
     const pr = p.produtos.find((x) => x.id === i.produtoId);
-    return pr ? s + resumoProduto(pr.receita, p.info).custoCentavos * i.quantidade : s;
+    const opc = (i.escolhas ?? []).reduce((t, e) => {
+      const m = e.materialId ? p.info[e.materialId] : null;
+      return m ? t + microParaCentavos(e.quantidade * m.custoMicro) : t;
+    }, 0);
+    return pr ? s + (resumoProduto(pr.receita, p.info).custoCentavos + opc) * i.quantidade : s;
   }, 0);
   const semCusto = itensNum.some((i) => {
     const pr = p.produtos.find((x) => x.id === i.produtoId);
@@ -249,7 +265,10 @@ function Detalhe(p: {
   }
   function escolherProduto(idx: number, id: string) {
     const pr = p.produtos.find((x) => x.id === id);
-    atualizar(idx, pr ? { produtoId: id, descricao: pr.nome, preco: pr.precoCentavos !== null ? reais(pr.precoCentavos) : itens[idx].preco } : { produtoId: '' });
+    const m = pr?.linha === 'impressao3d' ? p.mult.impressao3d : p.mult.encadernacao;
+    atualizar(idx, pr
+      ? { produtoId: id, descricao: pr.nome, preco: pr.precoCentavos !== null ? reais(pr.precoCentavos) : itens[idx].preco, escolhas: escolhasPadrao(pr.opcoes ?? [], p.info, m, Math.max(1, Math.round(lerNumero(itens[idx].quantidade)) || 1)) }
+      : { produtoId: '', escolhas: [] });
   }
   function mudarTipo(t: TipoPedido) {
     setTipo(t);
@@ -273,6 +292,10 @@ function Detalhe(p: {
     if (editavelItens) {
       lista = converter();
       if (lista.some((i) => !i.descricao)) { setErro('Todo item precisa de uma descrição.'); return null; }
+      for (const i of lista) {
+        const pend = gruposPendentes(p.produtos.find((x) => x.id === i.produtoId)?.opcoes ?? [], i.escolhas ?? [], p.info, i.quantidade);
+        if (pend.length) { setErro(`Falta escolher em “${i.descricao}”: ${pend.join(', ')}.`); return null; }
+      }
       if (lista.some((i) => i.quantidade < 1)) { setErro('A quantidade de cada item precisa ser 1 ou mais.'); return null; }
     }
     const prazoDias = Math.round(dias);
@@ -375,7 +398,7 @@ function Detalhe(p: {
                 </Campo>
                 <Campo rotulo="Descrição"><input type="text" value={it.descricao} onChange={(e) => atualizar(idx, { descricao: e.target.value })} /></Campo>
                 <Campo rotulo="Quantidade"><input type="text" inputMode="numeric" value={it.quantidade} onChange={(e) => atualizar(idx, { quantidade: e.target.value })} /></Campo>
-                <Campo rotulo="Preço unitário (R$)"><input type="text" inputMode="decimal" value={it.preco} onChange={(e) => atualizar(idx, { preco: e.target.value })} /></Campo>
+                <Campo rotulo={it.escolhas.length ? 'Preço base (R$)' : 'Preço unitário (R$)'}><input type="text" inputMode="decimal" value={it.preco} onChange={(e) => atualizar(idx, { preco: e.target.value })} /></Campo>
                 <Campo rotulo="Modelo do mostruário">
                   <select value={it.modeloId} onChange={(e) => atualizar(idx, { modeloId: e.target.value })}>
                     <option value="">—</option>
@@ -389,13 +412,21 @@ function Detalhe(p: {
                   </select>
                 </Campo>
               </div>
+              <OpcoesDoItem
+                produto={p.produtos.find((x) => x.id === it.produtoId)}
+                escolhas={it.escolhas}
+                unidades={Math.max(1, Math.round(lerNumero(it.quantidade)) || 1)}
+                info={p.info}
+                mult={p.produtos.find((x) => x.id === it.produtoId)?.linha === 'impressao3d' ? p.mult.impressao3d : p.mult.encadernacao}
+                aoMudar={(escolhas) => atualizar(idx, { escolhas })}
+              />
               <div style={{ marginTop: 8 }}>
                 <Campo rotulo="Personalização (nome na capa, cores, detalhes)">
                   <input type="text" value={it.observacao} onChange={(e) => atualizar(idx, { observacao: e.target.value })} />
                 </Campo>
               </div>
               <div className="linha" style={{ marginTop: 8 }}>
-                <span className="suave">Subtotal: {centavosParaTexto(Math.round((Number.isNaN(lerNumero(it.quantidade)) ? 0 : Math.round(lerNumero(it.quantidade))) * (Number.isNaN(lerNumero(it.preco || '0')) ? 0 : Math.round(lerNumero(it.preco || '0') * 100))))}</span>
+                <span className="suave">{it.escolhas.length > 0 && <>Com opções: {centavosParaTexto(itensNum[idx]?.precoUnitCentavos ?? 0)} cada · </>}Subtotal: {centavosParaTexto(Math.round((itensNum[idx]?.quantidade ?? 0) * (itensNum[idx]?.precoUnitCentavos ?? 0)))}</span>
                 <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setItens(itens.filter((_, k) => k !== idx))}>Remover item</button>
               </div>
             </div>
@@ -414,6 +445,7 @@ function Detalhe(p: {
                   <td>
                     <strong>{i.descricao}</strong>
                     {(i.modeloNome || i.adesivoNome) && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{[i.modeloNome && `modelo: ${i.modeloNome}`, i.adesivoNome && `adesivos: ${i.adesivoNome}`].filter(Boolean).join(' · ')}</div>}
+                    {i.escolhas && i.escolhas.length > 0 && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{resumoEscolhas(i.escolhas)}</div>}
                     {i.observacao && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{i.observacao}</div>}
                   </td>
                   <td>{i.quantidade}</td>
@@ -539,3 +571,42 @@ function Detalhe(p: {
   );
 }
 
+
+function OpcoesDoItem(p: {
+  produto: Produto | undefined;
+  escolhas: EscolhaItem[];
+  unidades: number;
+  info: Record<string, InfoMaterial>;
+  mult: number;
+  aoMudar: (e: EscolhaItem[]) => void;
+}) {
+  const grupos = p.produto?.opcoes ?? [];
+  if (grupos.length === 0) return null;
+  return (
+    <div style={{ marginTop: 10 }}>
+      {grupos.map((g) => {
+        // a opção já escolhida continua aparecendo, mesmo que o estoque tenha mudado
+        const visiveis = g.opcoes.filter((o) => opcaoDisponivel(o, p.info, p.unidades) || p.escolhas.some((e) => e.grupoId === g.id && e.opcaoId === o.id));
+        if (visiveis.length === 0) return null;
+        return (
+          <div key={g.id} style={{ marginTop: 6 }}>
+            <strong>{g.nome}</strong> <span className="suave">{g.tipo === 'multipla' ? '(pode várias)' : ''}{g.obrigatorio ? ' · obrigatória' : ''}</span>
+            <div className="linha" style={{ flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {visiveis.map((o) => {
+                const marcada = p.escolhas.some((e) => e.grupoId === g.id && e.opcaoId === o.id);
+                const e = p.escolhas.find((x) => x.grupoId === g.id && x.opcaoId === o.id);
+                const acr = e ? e.acrescimoCentavos : alternarEscolha([], g, o, p.info, p.mult)[0].acrescimoCentavos;
+                const falta = marcada && !opcaoDisponivel(o, p.info, p.unidades);
+                return (
+                  <button key={o.id} type="button" className={marcada ? 'btn primario' : 'btn'} onClick={() => p.aoMudar(alternarEscolha(p.escolhas, g, o, p.info, p.mult))}>
+                    {o.nome}{acr > 0 ? ` +${centavosParaTexto(acr)}` : ''}{falta ? ' (estoque curto)' : ''}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
