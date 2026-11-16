@@ -1,6 +1,6 @@
 import { centavosParaTexto } from '../../dominio/dinheiro.ts';
 import {
-  alternarEscolha, definirOutro, definirTexto, ehEscolha, ehTexto, ID_OUTRO, ID_TEXTO, opcaoDisponivel, trocarVariante, variantesDisponiveis,
+  alternarEscolha, definirOutro, definirTextoDaOpcao, definirTexto, ehEscolha, ehTexto, ID_OUTRO, ID_TEXTO, opcaoDisponivel, trocarVariante, variantesDisponiveis,
   type EscolhaItem, type GrupoOpcoes,
 } from '../../dominio/opcoes.ts';
 import type { InfoMaterial } from '../../dominio/produtos.ts';
@@ -74,6 +74,13 @@ export function FormularioItem(p: {
                 value={outro.opcaoNome === 'Outro' ? '' : outro.opcaoNome}
                 onChange={(e) => p.aoMudar(definirOutro(p.escolhas, g, e.target.value))} />
             )}
+            {g.opcoes.filter((o) => o.pedeTexto && doGrupo.some((e) => e.opcaoId === o.id)).map((o) => (
+              <label key={o.id} className="campo" style={{ marginTop: 6 }}>
+                <span>{o.pedeTexto} *</span>
+                <input type="text" value={doGrupo.find((e) => e.opcaoId === o.id)?.texto ?? ''}
+                  onChange={(e) => p.aoMudar(definirTextoDaOpcao(p.escolhas, g, o, e.target.value, p.info, p.mult))} />
+              </label>
+            ))}
             {g.opcoes.filter((o) => o.variantes?.length && doGrupo.some((e) => e.opcaoId === o.id)).map((o) => {
               const atual = doGrupo.find((e) => e.opcaoId === o.id)?.materialId ?? '';
               const lista = variantesDisponiveis(o, p.info, p.unidades);

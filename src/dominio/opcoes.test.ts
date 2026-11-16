@@ -97,3 +97,15 @@ test('modelo da agenda tem perguntas e seções', () => {
   assert.ok(m.some((g) => g.tipo === 'secao') && m.some((g) => g.tipo === 'email'));
   assert.equal(new Set(m.flatMap((g) => [g.id, ...g.opcoes.map((o) => o.id)])).size, n);
 });
+
+import { definirTextoDaOpcao } from './opcoes.ts';
+test('extra que pede texto (nome na capa) com valor', () => {
+  const nome = op({ id: 'n', nome: 'Nome na capa', acrescimoCentavos: 500, pedeTexto: 'Qual nome?' });
+  const g: GrupoOpcoes = { id: 'x', nome: 'Extras', tipo: 'multipla', obrigatorio: false, opcoes: [nome] };
+  let e = alternarEscolha([], g, nome, {}, 1);
+  assert.deepEqual(gruposPendentes([g], e, {}), ['Extras (Qual nome?)']);
+  e = definirTextoDaOpcao(e, g, nome, 'Maria', {}, 1);
+  assert.equal(e[0].opcaoNome, 'Nome na capa: Maria');
+  assert.equal(acrescimoTotal(e), 500);
+  assert.deepEqual(gruposPendentes([g], e, {}), []);
+});

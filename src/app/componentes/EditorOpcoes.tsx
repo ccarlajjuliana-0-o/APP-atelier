@@ -6,7 +6,7 @@ import { TIPOS_GRUPO, ehEscolha, type GrupoOpcoes, type OpcaoProduto, type TipoG
 import { modeloAgenda } from '../../dominio/modeloAgenda.ts';
 import type { InfoMaterial } from '../../dominio/produtos.ts';
 
-export interface OpcaoForm { id: string; nome: string; materialId: string; quantidade: string; desperdicio: string; acrescimo: string; padrao: boolean; variantes: string[] }
+export interface OpcaoForm { id: string; nome: string; materialId: string; quantidade: string; desperdicio: string; acrescimo: string; padrao: boolean; variantes: string[]; pedeTexto: string }
 export interface GrupoForm { id: string; nome: string; descricao: string; tipo: TipoGrupo; obrigatorio: boolean; permiteOutro: boolean; opcoes: OpcaoForm[] }
 
 const txt = (n: number) => (n ? String(n).replace('.', ',') : '');
@@ -17,7 +17,7 @@ export function gruposParaForm(gs: GrupoOpcoes[]): GrupoForm[] {
     id: g.id, nome: g.nome, descricao: g.descricao ?? '', tipo: g.tipo, obrigatorio: g.obrigatorio, permiteOutro: !!g.permiteOutro,
     opcoes: g.opcoes.map((o) => ({
       id: o.id, nome: o.nome, materialId: o.materialId ?? '', quantidade: txt(o.quantidade), desperdicio: txt(o.desperdicioPct),
-      acrescimo: o.acrescimoCentavos === null ? '' : (o.acrescimoCentavos / 100).toFixed(2).replace('.', ','), padrao: o.padrao, variantes: o.variantes ?? [],
+      acrescimo: o.acrescimoCentavos === null ? '' : (o.acrescimoCentavos / 100).toFixed(2).replace('.', ','), padrao: o.padrao, variantes: o.variantes ?? [], pedeTexto: o.pedeTexto ?? '',
     })),
   }));
 }
@@ -29,6 +29,7 @@ export function gruposDoForm(gs: GrupoForm[]): GrupoOpcoes[] {
     opcoes: (ehEscolha(g.tipo) ? g.opcoes : []).map((o): OpcaoProduto => ({
       id: o.id, nome: o.nome.trim(), materialId: o.variantes.length ? null : o.materialId || null,
       ...(o.variantes.length ? { variantes: o.variantes } : {}),
+      ...(o.pedeTexto.trim() ? { pedeTexto: o.pedeTexto.trim() } : {}),
       quantidade: o.materialId || o.variantes.length ? (num(o.quantidade) || 1) : 0, desperdicioPct: num(o.desperdicio),
       acrescimoCentavos: o.acrescimo.trim() ? Math.round(num(o.acrescimo) * 100) : null, padrao: o.padrao,
     })),
@@ -39,7 +40,7 @@ function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return <label className="campo"><span>{rotulo}</span>{children}</label>;
 }
 
-export function EditorOpcoes(p: { grupos: GrupoForm[]; aoMudar: (g: GrupoForm[]) => void; materiais: Material[]; info: Record<string, InfoMaterial> }) {
+export function EditorOpcoes(p: { catalogo: boolean; grupos: GrupoForm[]; aoMudar: (g: GrupoForm[]) => void; materiais: Material[]; info: Record<string, InfoMaterial> }) {
   const { grupos } = p;
   const setG = (gi: number, parte: Partial<GrupoForm>) => p.aoMudar(grupos.map((g, k) => (k === gi ? { ...g, ...parte } : g)));
   const setO = (gi: number, oi: number, parte: Partial<OpcaoForm>) =>
@@ -51,10 +52,11 @@ export function EditorOpcoes(p: { grupos: GrupoForm[]; aoMudar: (g: GrupoForm[])
 
   return (
     <>
-      <h2 style={{ marginTop: 18 }}>Formulário personalizado</h2>
+      <h2 style={{ marginTop: 18 }}>{p.catalogo ? 'Personalizações e extras (opcionais)' : 'Perguntas do formulário'}</h2>
       <p className="suave">
-        As escolhas que o cliente faz neste produto (cor do wire-o, número de páginas, elástico…). Cada opção pode usar um material do estoque:
-        ela soma ao preço, reserva o material e some do formulário se acabar.
+        {p.catalogo
+          ? 'O que a cliente pode mudar neste produto pronto: cor da capa, nome na capa, elástico, cantoneira, outro miolo… O que já vem no produto fica na receita; aqui entram as trocas e os extras. Todo extra pode ter um valor a mais (use 0,00 para uma opção sem custo, como a cor padrão).'
+          : 'As perguntas que a cliente responde para montar o produto do zero (cores, estilo, versão, miolos…). Cada opção pode ter um valor a mais e/ou um material do estoque, que fica reservado e some se acabar.'}
       </p>
       {grupos.map((g, gi) => (
         <div key={g.id} className="cartao" style={{ marginTop: 8, padding: 12 }}>
@@ -103,6 +105,11 @@ export function EditorOpcoes(p: { grupos: GrupoForm[]; aoMudar: (g: GrupoForm[])
                   {m && <span className="suave">em estoque: {m.disponivel.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>}
                   <button className="btn" onClick={() => setG(gi, { opcoes: g.opcoes.filter((_, k) => k !== oi) })}>Remover</button>
                 </div>
+                <div style={{ marginTop: 6 }}>
+                  <Campo rotulo="Pede um texto à cliente? (ex.: Qual nome na capa? — vazio = não pede)">
+                    <input type="text" value={o.pedeTexto} onChange={(e) => setO(gi, oi, { pedeTexto: e.target.value })} />
+                  </Campo>
+                </div>
                 <details style={{ marginTop: 6 }}>
                   <summary className="suave">Deixar escolher o tipo entre materiais do estoque ({o.variantes.length})</summary>
                   <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
@@ -123,7 +130,7 @@ export function EditorOpcoes(p: { grupos: GrupoForm[]; aoMudar: (g: GrupoForm[])
           })}
           <div className="linha" style={{ marginTop: 8 }}>
             {ehEscolha(g.tipo) && (
-              <button className="btn" onClick={() => setG(gi, { opcoes: [...g.opcoes, { id: novoId(), nome: '', materialId: '', quantidade: '', desperdicio: '', acrescimo: '', padrao: false, variantes: [] }] })}>+ Opção</button>
+              <button className="btn" onClick={() => setG(gi, { opcoes: [...g.opcoes, { id: novoId(), nome: '', materialId: '', quantidade: '', desperdicio: '', acrescimo: '', padrao: false, variantes: [], pedeTexto: '' }] })}>+ Opção</button>
             )}
             <button className="btn" disabled={gi === 0} onClick={() => p.aoMudar(mover(grupos, gi, -1))}>↑</button>
             <button className="btn" disabled={gi === grupos.length - 1} onClick={() => p.aoMudar(mover(grupos, gi, 1))}>↓</button>

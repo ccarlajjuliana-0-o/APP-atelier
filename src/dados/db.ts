@@ -87,6 +87,7 @@ export interface Produto {
   tempoTrabalhoMin: number;
   precoCentavos: number | null; // preço de venda atual (o sugerido vem na precificação)
   receita: ItemProduto[];
+  modo?: 'catalogo' | 'personalizado'; // catálogo: pré-montado com extras; personalizado: 100% feito pelo formulário
   opcoes?: GrupoOpcoes[]; // formulário personalizado: escolhas do cliente ligadas ao estoque
   perfil3d: Perfil3D | null;
   fotos?: Blob[];

@@ -25,7 +25,7 @@ export function Formulario() {
   const [msg, setMsg] = useState('');
 
   async function carregar() {
-    setProdutos((await listarProdutos()).filter((p) => p.ativo && (p.opcoes?.length ?? 0) > 0));
+    setProdutos((await listarProdutos()).filter((p) => p.ativo));
     setClientes(await listarClientes());
     setMateriais(await listarMateriais());
     setDisp(await disponiveis());
@@ -81,17 +81,23 @@ export function Formulario() {
     <>
       <h1>Formulário personalizado</h1>
       <p className="suave">
-        Preencha com a cliente ao lado: ao final vira um orçamento em Pedidos, com o material já considerado. Só aparecem produtos que têm perguntas
-        (cadastre em Produtos › Formulário personalizado).
+        Preencha com a cliente ao lado: escolha um produto de catálogo (com seus extras) ou um produto 100% personalizado (com todas as perguntas).
+        Ao final vira um orçamento em Pedidos, com o material já considerado. Cadastre os produtos e as perguntas em Produtos.
       </p>
       <div className="faixa" />
       {msg && <p className="aviso">{msg}</p>}
+      {produtos.length === 0 && <p className="aviso">Ainda não há produtos. Em Produtos, crie um “Novo produto 100% personalizado” (dá para começar pelo modelo da agenda) ou um de catálogo.</p>}
       <div className="cartao">
         <div className="formgrid">
           <label className="campo"><span>Produto</span>
             <select value={produtoId} onChange={(e) => escolher(e.target.value)}>
               <option value="">Escolha…</option>
-              {produtos.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
+              <optgroup label="100% personalizado">
+                {produtos.filter((x) => x.modo === 'personalizado').map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
+              </optgroup>
+              <optgroup label="Catálogo">
+                {produtos.filter((x) => x.modo !== 'personalizado').map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
+              </optgroup>
             </select>
           </label>
           <label className="campo"><span>Cliente</span>
@@ -109,6 +115,7 @@ export function Formulario() {
 
         {produto && (
           <>
+            {(produto.opcoes?.length ?? 0) === 0 && <p className="suave">Este produto não tem perguntas ainda. Adicione em Produtos › {produto.modo === 'personalizado' ? 'Perguntas do formulário' : 'Personalizações e extras'}.</p>}
             <FormularioItem grupos={produto.opcoes ?? []} escolhas={escolhas} unidades={q} info={info} mult={m} aoMudar={setEscolhas} />
             <label className="campo" style={{ marginTop: 12 }}><span>Observações do pedido</span>
               <input type="text" value={obs} onChange={(e) => setObs(e.target.value)} />

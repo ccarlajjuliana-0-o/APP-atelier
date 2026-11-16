@@ -13,10 +13,10 @@ const PERFIL_PADRAO: Perfil3D = {
 };
 const TIPOS_PREENCHIMENTO = ['grade', 'giroide', 'linhas', 'cúbico', 'triangular', 'outro'];
 
-function novoProduto(): Produto {
+function novoProduto(modo: 'catalogo' | 'personalizado'): Produto {
   return {
     id: '', nome: '', linha: 'encadernacao', categoria: '', tempoTrabalhoMin: 0, precoCentavos: null,
-    receita: [], perfil3d: null, ativo: true, atualizadoEm: '',
+    receita: [], modo, opcoes: [], perfil3d: null, ativo: true, atualizadoEm: '',
   };
 }
 
@@ -60,12 +60,16 @@ export function Produtos() {
   return (
     <>
       <h1>Produtos</h1>
-      <p className="suave">Cada produto tem uma receita: os materiais que ele usa. Com ela o app calcula o custo de material e quantos dá para fazer com o estoque de agora.</p>
+      <p className="suave">
+        <strong>Catálogo:</strong> produto pronto, com receita fixa e poucos extras opcionais (cor da capa, nome, elástico, cantoneira…).{' '}
+        <strong>100% personalizado:</strong> montado pelo formulário de perguntas. Com a receita o app calcula custo e quantos dá para fazer com o estoque.
+      </p>
       <div className="faixa" />
 
       <div className="cartao">
         <div className="linha">
-          <button className="btn primario" onClick={() => setEditando(novoProduto())}>Novo produto</button>
+          <button className="btn primario" onClick={() => setEditando(novoProduto('catalogo'))}>Novo produto de catálogo</button>
+          <button className="btn primario" onClick={() => setEditando(novoProduto('personalizado'))}>Novo produto 100% personalizado</button>
           <label className="linha" style={{ marginLeft: 'auto' }}>
             <input type="checkbox" checked={arquivados} onChange={(e) => setArquivados(e.target.checked)} /> Ver arquivados
           </label>
@@ -112,7 +116,7 @@ export function Produtos() {
                       <Miniatura foto={p.fotos?.[0]} />
                       <div>
                         <strong>{p.nome}</strong>
-                        <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{LINHAS[p.linha]}{p.categoria ? ` · ${p.categoria}` : ''}</div>
+                        <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{p.modo === 'personalizado' ? '100% personalizado · ' : 'Catálogo · '}{LINHAS[p.linha]}{p.categoria ? ` · ${p.categoria}` : ''}</div>
                       </div>
                     </div>
                   </td>
@@ -171,6 +175,7 @@ function FormProduto(p: {
   fechar: () => void;
   aoSalvar: (msg: string) => Promise<void>;
 }) {
+  const catalogo = p.inicial.modo !== 'personalizado';
   const [nome, setNome] = useState(p.inicial.nome);
   const [linha, setLinha] = useState<Linha>(p.inicial.linha);
   const [categoria, setCategoria] = useState(p.inicial.categoria);
@@ -220,6 +225,7 @@ function FormProduto(p: {
       nome: n, linha, categoria: categoria.trim(), tempoTrabalhoMin: t,
       precoCentavos: pc === null ? null : Math.round(pc * 100),
       receita: itensNum,
+      modo: catalogo ? 'catalogo' : 'personalizado',
       opcoes: gruposNum,
       perfil3d: linha === 'impressao3d' ? perfil : null,
       fotos,
@@ -230,7 +236,7 @@ function FormProduto(p: {
 
   return (
     <div className="cartao">
-      <h2>{p.inicial.id ? 'Produto' : 'Novo produto'}</h2>
+      <h2>{catalogo ? 'Produto de catálogo' : 'Produto 100% personalizado'}{p.inicial.id ? '' : ' (novo)'}</h2>
       <div className="formgrid">
         <Campo rotulo="Nome"><input type="text" value={nome} onChange={(e) => setNome(e.target.value)} /></Campo>
         <Campo rotulo="Linha">
@@ -247,7 +253,10 @@ function FormProduto(p: {
         <CampoFotos fotos={fotos} max={4} rotulo="Fotos do produto (até 4)" aoMudar={setFotos} />
       </div>
 
-      <h2 style={{ marginTop: 18 }}>Receita (por unidade)</h2>
+      {!catalogo && <EditorOpcoes catalogo={false} grupos={grupos} aoMudar={setGrupos} materiais={p.materiais} info={p.info} />}
+
+      <details open={catalogo || itens.length > 0} style={{ marginTop: 6 }}>
+      <summary style={{ cursor: 'pointer', marginTop: 12 }}><strong style={{ fontSize: '1.15em' }}>{catalogo ? 'Receita (por unidade)' : 'Materiais fixos (opcional)'}</strong></summary>
       {itens.length === 0 ? (
         <p className="suave">Adicione os materiais que uma unidade do produto usa.</p>
       ) : (
@@ -318,7 +327,9 @@ function FormProduto(p: {
         {r.semCusto.length > 0 && <div className="suave">Ainda sem custo (registre uma compra): {r.semCusto.map((id) => infoDe(id)?.nome).join(', ')}.</div>}
       </div>
 
-      <EditorOpcoes grupos={grupos} aoMudar={setGrupos} materiais={p.materiais} info={p.info} />
+      </details>
+
+      {catalogo && <EditorOpcoes catalogo grupos={grupos} aoMudar={setGrupos} materiais={p.materiais} info={p.info} />}
 
       {linha === 'impressao3d' && (
         <>
