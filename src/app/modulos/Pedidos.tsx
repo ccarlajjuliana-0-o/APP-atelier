@@ -7,9 +7,8 @@ import {
   registrarPagamento, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
 import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
-import {
-  acrescimoTotal, alternarEscolha, escolhasPadrao, gruposPendentes, opcaoDisponivel, resumoEscolhas, type EscolhaItem,
-} from '../../dominio/opcoes.ts';
+import { FormularioItem } from '../componentes/FormularioItem.tsx';
+import { acrescimoTotal, escolhasPadrao, gruposPendentes, linhasDeEscolhas, type EscolhaItem } from '../../dominio/opcoes.ts';
 import { formatarQuantidade, lerNumero } from '../../dominio/materiais.ts';
 import {
   ABERTOS, AVANCO, STATUS, TEXTO_PAGAMENTO, TIPOS, atrasado, dataParaTexto, dataPrometida as dataPrometidaDe, entradaCentavos, necessidades,
@@ -412,8 +411,8 @@ function Detalhe(p: {
                   </select>
                 </Campo>
               </div>
-              <OpcoesDoItem
-                produto={p.produtos.find((x) => x.id === it.produtoId)}
+              <FormularioItem
+                grupos={p.produtos.find((x) => x.id === it.produtoId)?.opcoes ?? []}
                 escolhas={it.escolhas}
                 unidades={Math.max(1, Math.round(lerNumero(it.quantidade)) || 1)}
                 info={p.info}
@@ -445,7 +444,7 @@ function Detalhe(p: {
                   <td>
                     <strong>{i.descricao}</strong>
                     {(i.modeloNome || i.adesivoNome) && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{[i.modeloNome && `modelo: ${i.modeloNome}`, i.adesivoNome && `adesivos: ${i.adesivoNome}`].filter(Boolean).join(' · ')}</div>}
-                    {i.escolhas && i.escolhas.length > 0 && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{resumoEscolhas(i.escolhas)}</div>}
+                    {i.escolhas && linhasDeEscolhas(i.escolhas).map((l, n) => <div key={n} className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{l}</div>)}
                     {i.observacao && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{i.observacao}</div>}
                   </td>
                   <td>{i.quantidade}</td>
@@ -571,42 +570,3 @@ function Detalhe(p: {
   );
 }
 
-
-function OpcoesDoItem(p: {
-  produto: Produto | undefined;
-  escolhas: EscolhaItem[];
-  unidades: number;
-  info: Record<string, InfoMaterial>;
-  mult: number;
-  aoMudar: (e: EscolhaItem[]) => void;
-}) {
-  const grupos = p.produto?.opcoes ?? [];
-  if (grupos.length === 0) return null;
-  return (
-    <div style={{ marginTop: 10 }}>
-      {grupos.map((g) => {
-        // a opção já escolhida continua aparecendo, mesmo que o estoque tenha mudado
-        const visiveis = g.opcoes.filter((o) => opcaoDisponivel(o, p.info, p.unidades) || p.escolhas.some((e) => e.grupoId === g.id && e.opcaoId === o.id));
-        if (visiveis.length === 0) return null;
-        return (
-          <div key={g.id} style={{ marginTop: 6 }}>
-            <strong>{g.nome}</strong> <span className="suave">{g.tipo === 'multipla' ? '(pode várias)' : ''}{g.obrigatorio ? ' · obrigatória' : ''}</span>
-            <div className="linha" style={{ flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-              {visiveis.map((o) => {
-                const marcada = p.escolhas.some((e) => e.grupoId === g.id && e.opcaoId === o.id);
-                const e = p.escolhas.find((x) => x.grupoId === g.id && x.opcaoId === o.id);
-                const acr = e ? e.acrescimoCentavos : alternarEscolha([], g, o, p.info, p.mult)[0].acrescimoCentavos;
-                const falta = marcada && !opcaoDisponivel(o, p.info, p.unidades);
-                return (
-                  <button key={o.id} type="button" className={marcada ? 'btn primario' : 'btn'} onClick={() => p.aoMudar(alternarEscolha(p.escolhas, g, o, p.info, p.mult))}>
-                    {o.nome}{acr > 0 ? ` +${centavosParaTexto(acr)}` : ''}{falta ? ' (estoque curto)' : ''}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}

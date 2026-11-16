@@ -58,3 +58,42 @@ test('escolhas entram nas necessidades de material', () => {
   const n = necessidades([it], { p: [] }, { rosa: 3 });
   assert.deepEqual(n.map((x) => [x.materialId, x.necessario, x.reservar, x.falta]), [['rosa', 2, 2, 0]]);
 });
+
+import { definirTexto, definirOutro, trocarVariante, variantesDisponiveis, linhasDeEscolhas } from './opcoes.ts';
+import { modeloAgenda } from './modeloAgenda.ts';
+
+test('cantoneira: acréscimo fixo e só os tipos com estoque', () => {
+  const inf: Record<string, InfoMaterial> = {
+    dourada: { nome: 'Cantoneira dourada', custoMicro: 800_000, disponivel: 4 },
+    prata: { nome: 'Cantoneira prata', custoMicro: 800_000, disponivel: 0 },
+  };
+  const cant = op({ id: 'c', nome: 'Cantoneira', acrescimoCentavos: 600, variantes: ['dourada', 'prata'] });
+  const g: GrupoOpcoes = { id: 'g', nome: 'Extras', tipo: 'multipla', obrigatorio: false, opcoes: [cant] };
+  assert.deepEqual(variantesDisponiveis(cant, inf), ['dourada']);
+  const e = alternarEscolha([], g, cant, inf, 2);
+  assert.equal(e[0].materialId, 'dourada');
+  assert.equal(e[0].opcaoNome, 'Cantoneira · Cantoneira dourada');
+  assert.equal(acrescimoTotal(e), 600);
+  assert.equal(opcaoDisponivel(cant, { ...inf, dourada: { ...inf.dourada, disponivel: 0 } }), false);
+  assert.equal(trocarVariante(e, g, cant, 'prata', inf, 2)[0].materialId, 'prata');
+});
+
+test('texto, Outro e linhas por pergunta', () => {
+  const g: GrupoOpcoes = { id: 't', nome: 'Estilo', tipo: 'multipla', obrigatorio: true, permiteOutro: true, opcoes: [op({ id: 'a', nome: 'Fofo' })] };
+  let e = definirTexto([], { ...g, tipo: 'email', nome: 'E-mail' }, 'a@b.com');
+  assert.equal(e.length, 1);
+  assert.equal(definirTexto(e, { ...g, tipo: 'email', nome: 'E-mail' }, ' ').length, 0);
+  e = alternarEscolha([], g, g.opcoes[0], {}, 1);
+  e = definirOutro(e, g, 'Boho');
+  assert.deepEqual(linhasDeEscolhas(e), ['Estilo: Fofo, Boho']);
+  assert.equal(definirOutro(e, g, null).length, 1);
+  assert.deepEqual(gruposPendentes([{ ...g, tipo: 'texto' }], [], {}), ['Estilo']);
+});
+
+test('modelo da agenda tem perguntas e seções', () => {
+  let n = 0;
+  const m = modeloAgenda(() => `i${n++}`);
+  assert.ok(m.length >= 20);
+  assert.ok(m.some((g) => g.tipo === 'secao') && m.some((g) => g.tipo === 'email'));
+  assert.equal(new Set(m.flatMap((g) => [g.id, ...g.opcoes.map((o) => o.id)])).size, n);
+});
