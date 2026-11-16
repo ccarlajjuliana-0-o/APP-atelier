@@ -13,6 +13,7 @@ import { Equipamentos } from './modulos/Equipamentos.tsx';
 import { Divulgacao } from './modulos/Divulgacao.tsx';
 import { AssistenteFlutuante } from './modulos/Assistente.tsx';
 import type { Tela } from './telas.ts';
+import { useMenuRecolhido, useTelaCheia } from './useVisaoDoApp.ts';
 import { Logo } from './componentes/Logo.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
@@ -48,12 +49,23 @@ function SincronizacaoAutomatica() {
 export function App() {
   const [prefs, setPrefs, temaAtivo] = useTema();
   const [tela, setTela] = useState<Tela>('inicio');
+  const [recolhido, setRecolhido] = useMenuRecolhido();
+  const cheia = useTelaCheia();
 
   return (
     <AuthGate>
       {(modoLocal) => (
-        <div className="app">
+        <div className={recolhido ? 'app recolhido' : 'app'}>
           {!modoLocal && <SincronizacaoAutomatica />}
+          {recolhido && (
+            <div className="abas-menu">
+              <button className="aba" aria-label="Abrir o menu" title="Abrir o menu" onClick={() => setRecolhido(false)}>›</button>
+              {cheia.disponivel && (
+                <button className="aba pequena" aria-label={cheia.ativa ? 'Sair da tela cheia' : 'Tela cheia'} title={cheia.ativa ? 'Sair da tela cheia' : 'Tela cheia'} onClick={cheia.alternar}>{cheia.ativa ? '⤡' : '⤢'}</button>
+              )}
+            </div>
+          )}
+          {!recolhido && (
           <nav className="menu" aria-label="Menu principal">
             <div className="marca">
               <Logo alt="Logomarca Craft Notes Unique" />
@@ -61,6 +73,7 @@ export function App() {
                 <strong>Craft Notes Unique</strong>
                 <span>atelier criativo</span>
               </div>
+              <button className="recolher" aria-label="Recolher o menu" title="Recolher o menu" onClick={() => setRecolhido(true)}>‹</button>
             </div>
             {ATIVAS.map((t) => (
               <button key={t.id} className="item" aria-current={tela === t.id ? 'page' : undefined} onClick={() => setTela(t.id)}>
@@ -75,12 +88,16 @@ export function App() {
             ))}
             <div className="espaco" />
             <EstadoNuvem />
+            {cheia.disponivel && (
+              <button className="item" onClick={cheia.alternar}>{cheia.ativa ? 'Sair da tela cheia' : 'Tela cheia'}</button>
+            )}
             {nuvem && (
               <button className="item" onClick={() => void sair()}>
                 Sair
               </button>
             )}
           </nav>
+          )}
           <main className="conteudo">
             {modoLocal && (
               <div className="aviso">Modo local: os dados ficam só neste aparelho. O login com GitHub e a nuvem entram quando o Supabase for configurado.</div>

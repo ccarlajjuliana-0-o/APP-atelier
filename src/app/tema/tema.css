@@ -25,7 +25,14 @@ button { cursor: pointer; }
   display: flex; flex-direction: column; padding: 20px 14px; gap: 4px; overflow-y: auto;
   background-image: var(--menu-camadas, none); background-size: var(--menu-tamanho, auto); background-repeat: var(--menu-repeticao, repeat); background-attachment: var(--menu-fixacao, scroll); background-position: center top;
 }
-.marca { display: flex; align-items: center; gap: 10px; padding: 0 4px 16px; }
+.marca { display: flex; align-items: center; gap: 10px; padding: 0 4px 16px; position: relative; }
+.recolher { margin-left: auto; align-self: flex-start; width: 32px; height: 32px; border-radius: 10px; border: 0; background: transparent; color: var(--sobre-menu); font-size: 22px; line-height: 1; opacity: 0.8; flex: none; }
+.recolher:hover { background: rgba(255, 255, 255, 0.12); opacity: 1; }
+.abas-menu { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 40; display: flex; flex-direction: column; gap: 6px; }
+.abas-menu .aba { width: 30px; height: 76px; border: 0; border-radius: 0 16px 16px 0; background: var(--menu); color: var(--sobre-menu); font-size: 24px; box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); }
+.app.recolhido .conteudo { padding-left: 44px; }
+@media (max-width: 700px) { .app.recolhido .conteudo { padding-left: 40px; } }
+.abas-menu .aba.pequena { height: 40px; font-size: 18px; }
 .marca img { width: 40px; height: 40px; border-radius: 14px; display: block; flex: none; object-fit: contain; }
 .marca strong { display: block; font-family: var(--fonte-script); font-weight: 400; font-size: calc(24px * var(--escala, 1)); color: var(--sobre-menu); line-height: 1.1; }
 .marca span { font-family: var(--fonte-titulo); font-size: calc(12px * var(--escala, 1)); letter-spacing: 0.15em; color: var(--sobre-menu); opacity: 0.8; }
