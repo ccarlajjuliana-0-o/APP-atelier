@@ -19,6 +19,7 @@ import { Mostruario } from './modulos/Mostruario.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
 import { iniciarSincronizacaoAutomatica } from '../dados/sync.ts';
+import { iniciarBackupAutomatico } from '../dados/backupNuvem.ts';
 import { Nuvem, EstadoNuvem } from './modulos/Nuvem.tsx';
 
 
@@ -42,7 +43,14 @@ const EM_BREVE: string[] = [];
 
 /** Liga a sincronização automática enquanto o app está aberto e logado. */
 function SincronizacaoAutomatica() {
-  useEffect(() => iniciarSincronizacaoAutomatica(), []);
+  useEffect(() => {
+    const parar = iniciarSincronizacaoAutomatica();
+    const pararBackup = iniciarBackupAutomatico();
+    return () => {
+      parar();
+      pararBackup();
+    };
+  }, []);
   return null;
 }
 

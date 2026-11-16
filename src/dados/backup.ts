@@ -67,9 +67,19 @@ export async function exportarTudo(): Promise<Blob> {
   return new Blob([JSON.stringify(dados)], { type: 'application/json' });
 }
 
-export async function importarTudo(arquivo: File): Promise<void> {
+/**
+ * `prevalecer`: ao restaurar, as versões do arquivo passam a valer sobre as que já estão na nuvem
+ * (ganham a data de agora; sem isso a sincronização devolveria os registros mais novos de volta).
+ */
+export async function importarTudo(arquivo: File, opcoes: { prevalecer?: boolean } = {}): Promise<void> {
   const dados = JSON.parse(await arquivo.text());
   if (dados.versao !== 1) throw new Error('Arquivo de backup de versão desconhecida.');
+  if (opcoes.prevalecer) {
+    const agora = new Date().toISOString();
+    for (const tabela of ['materiais', 'fornecedores', 'produtos', 'clientes', 'pedidos', 'despesas', 'ajustes', 'equipamentos', 'publicacoes', 'preferencias', 'temas', 'identidade', 'fontes']) {
+      if (Array.isArray(dados[tabela])) dados[tabela] = dados[tabela].map((r: any) => ({ ...r, atualizadoEm: agora }));
+    }
+  }
   const fontes = await Promise.all(
     (dados.fontes ?? []).map(async (f: any) => ({ ...f, arquivo: await base64ParaBlob(f.arquivo) })),
   );
