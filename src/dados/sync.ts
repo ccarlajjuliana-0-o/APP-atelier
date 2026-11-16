@@ -77,8 +77,12 @@ async function executar(): Promise<void> {
   try {
     const chaveCursor = `cnu.sync.${uid}.cursor`;
     const chaveEnvio = `cnu.sync.${uid}.envio`;
-    const ultimoEnvio = Number(localStorage.getItem(chaveEnvio) ?? 0) || 0;
-    const cursor = localStorage.getItem(chaveCursor) ?? '';
+    // Quando passam a ser sincronizadas tabelas novas (ex.: fontes), refaz tudo uma vez: o que já foi recebido antes e ignorado precisa ser buscado de novo.
+    const chaveTabelas = `cnu.sync.${uid}.tabelas`;
+    const listaAtual = TABELAS_SINCRONIZADAS.join(',');
+    const refazer = localStorage.getItem(chaveTabelas) !== listaAtual;
+    const ultimoEnvio = refazer ? 0 : Number(localStorage.getItem(chaveEnvio) ?? 0) || 0;
+    const cursor = refazer ? '' : localStorage.getItem(chaveCursor) ?? '';
 
     // ajustes salvos antes da sincronização existir não têm data de alteração
     const ajustesLocal = await db.ajustes.get('financeiro');
@@ -135,6 +139,7 @@ async function executar(): Promise<void> {
       }
     }
 
+    localStorage.setItem(chaveTabelas, listaAtual);
     localStorage.setItem(chaveEnvio, String(inicio));
     localStorage.setItem(chaveCursor, maiorRecebido);
     definir({ situacao: 'ok', ultima: new Date().toISOString(), mensagem: '', enviados, recebidos });
@@ -190,6 +195,8 @@ function registrarGanchos() {
   db.temas.hook('updating', marcar);
   db.identidade.hook('creating', marcar);
   db.identidade.hook('updating', marcar);
+  db.fontes.hook('creating', marcar);
+  db.fontes.hook('updating', marcar);
 }
 
 /** Liga a sincronização automática: ao abrir, a cada poucos minutos, ao voltar a internet, ao voltar para a aba e ~15 s depois de cada alteração. */
