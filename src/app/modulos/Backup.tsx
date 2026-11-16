@@ -129,8 +129,8 @@ export function Backup() {
     e.target.value = '';
     if (!arquivo) return;
     try {
-      await importarTudo(arquivo);
-      setMsg('Backup restaurado.');
+      await importarTudo(arquivo, { prevalecer: true });
+      setMsg('Backup restaurado. O que estava no arquivo passa a valer, inclusive nos outros aparelhos, na próxima sincronização. O que foi criado depois dele foi mantido.');
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Não consegui ler esse arquivo.');
     }
