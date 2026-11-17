@@ -288,6 +288,26 @@ function Detalhe(p: {
         </Campo>
       </div>
 
+      {editavel && ini.id && (
+        <div className="cartao" style={{ background: 'var(--neutro)' }}>
+          <strong>A cliente fechou?</strong>
+          <label className="linha" style={{ marginTop: 6 }}>
+            <input type="checkbox" checked={confirmou} onChange={(e) => setConfirmou(e.target.checked)} /> A cliente confirmou o orçamento
+          </label>
+          <div className="linha" style={{ marginTop: 6, flexWrap: 'wrap', gap: 8 }}>
+            <Campo rotulo="Sinal recebido (R$, opcional)"><input type="text" inputMode="decimal" value={sinal} onChange={(e) => setSinal(e.target.value)} style={{ width: 120 }} /></Campo>
+            <button className="btn" onClick={() => setSinal(reais(entradaCentavos(total)))}>Usar 50%</button>
+            <button className="btn primario" onClick={() => void aoGerarPedido()}>Gerar pedido</button>
+          </div>
+          <p className="suave" style={PEQUENO}>O pedido só é gerado com a confirmação e/ou o sinal. Ao gerar, o material fica reservado e o sinal vira o primeiro pagamento.</p>
+          <div className="linha" style={{ marginTop: 6, flexWrap: 'wrap', gap: 8 }}>
+            <input type="text" placeholder="Motivo, se não fechou (opcional)" value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ width: 260 }} />
+            <button className="btn" onClick={() => void aoRecusar()}>Não fechou</button>
+          </div>
+        </div>
+      )}
+
+      {erro && ini.id && <p className="aviso">{erro}</p>}
       <h3 style={{ margin: '16px 0 8px' }}>Itens</h3>
       {editavel ? (
         <>
@@ -361,25 +381,6 @@ function Detalhe(p: {
       <p style={{ marginTop: 12 }}>Total: <strong>{centavosParaTexto(total)}</strong> <span className="suave">· entrada de 50%: {centavosParaTexto(entradaCentavos(total))}</span></p>
 
       {erro && <p className="aviso">{erro}</p>}
-
-      {editavel && ini.id && (
-        <div className="cartao" style={{ background: 'var(--neutro)' }}>
-          <strong>A cliente fechou?</strong>
-          <label className="linha" style={{ marginTop: 6 }}>
-            <input type="checkbox" checked={confirmou} onChange={(e) => setConfirmou(e.target.checked)} /> A cliente confirmou o orçamento
-          </label>
-          <div className="linha" style={{ marginTop: 6, flexWrap: 'wrap', gap: 8 }}>
-            <Campo rotulo="Sinal recebido (R$, opcional)"><input type="text" inputMode="decimal" value={sinal} onChange={(e) => setSinal(e.target.value)} style={{ width: 120 }} /></Campo>
-            <button className="btn" onClick={() => setSinal(reais(entradaCentavos(total)))}>Usar 50%</button>
-            <button className="btn primario" onClick={() => void aoGerarPedido()}>Gerar pedido</button>
-          </div>
-          <p className="suave" style={PEQUENO}>O pedido só é gerado com a confirmação e/ou o sinal. Ao gerar, o material fica reservado e o sinal vira o primeiro pagamento.</p>
-          <div className="linha" style={{ marginTop: 6, flexWrap: 'wrap', gap: 8 }}>
-            <input type="text" placeholder="Motivo, se não fechou (opcional)" value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ width: 260 }} />
-            <button className="btn" onClick={() => void aoRecusar()}>Não fechou</button>
-          </div>
-        </div>
-      )}
 
       <div className="linha" style={{ marginTop: 12 }}>
         {editavel && <button className="btn primario" onClick={() => void aoSalvar()}>Salvar orçamento</button>}

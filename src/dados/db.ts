@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Movimentacao } from '../dominio/estoque.ts';
 import type { Categoria, Unidade } from '../dominio/materiais.ts';
-import type { FichaProduto, ItemProduto, Linha, Perfil3D, TipoColecao } from '../dominio/produtos.ts';
+import type { FichaProduto, ItemProduto, Linha, Perfil3D, TipoColecao, UsoFilamento } from '../dominio/produtos.ts';
 import type { GrupoOpcoes } from '../dominio/opcoes.ts';
 import type { ExtraCatalogo } from '../dominio/extras.ts';
 import type { Orcamento } from '../dominio/orcamentos.ts';
@@ -96,7 +96,8 @@ export interface Produto {
   colecaoTipo?: TipoColecao;
   colecao?: string; // agrupamento: coleção, temporada, data comemorativa ou temática
   prontos?: number; // unidades já prontas (feitas)
-  filamentoMaterialId?: string | null; // 3D: filamento do estoque (a receita sai do volume + purga)
+  filamentos?: UsoFilamento[]; // 3D: filamentos do estoque (um por cor), com volume e purga
+  filamentoMaterialId?: string | null; // legado (um só filamento) // 3D: filamento do estoque (a receita sai do volume + purga)
   capaId?: string | null; // do Mostruário
   miolosIds?: string[];
   adesivosIds?: string[];

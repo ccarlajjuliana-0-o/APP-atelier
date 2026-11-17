@@ -7,7 +7,7 @@ import { CATEGORIAS, UNIDADES, lerNumero, microParaTexto } from '../../dominio/m
 import { centavosParaTexto } from '../../dominio/dinheiro.ts';
 import { EditorOpcoes, gruposParaForm, gruposDoForm, type GrupoForm } from '../componentes/EditorOpcoes.tsx';
 import { ExtrasCatalogo } from '../componentes/ExtrasCatalogo.tsx';
-import { BICOS, FICHA_VAZIA, FILAMENTOS, LINHAS, MAX_CORES, receita3d, TIPOS_COLECAO, resumoFicha, resumoProduto, type FichaProduto, type TipoColecao, type InfoMaterial, type ItemProduto, type Linha, type Perfil3D } from '../../dominio/produtos.ts';
+import { BICOS, FICHA_VAZIA, FILAMENTOS, LINHAS, MAX_CORES, receitaFilamentos, TIPOS_COLECAO, resumoFicha, resumoProduto, type FichaProduto, type TipoColecao, type InfoMaterial, type ItemProduto, type Linha, type Perfil3D, type UsoFilamento } from '../../dominio/produtos.ts';
 
 const PERFIL_PADRAO: Perfil3D = {
   paredes: 3, preenchimentoTipo: 'grade', preenchimentoPct: 15, alturaCamadaMm: 0.2, cor: 'mono', tempoImpressaoMin: 0, observacoes: '',
@@ -229,9 +229,14 @@ function FormProduto(p: {
   const nt = (n: number | undefined) => (n ? String(n).replace('.', ',') : '');
   const [cfg, setCfg] = useState({
     paredes: nt(perfil.paredes), preenchimentoPct: nt(perfil.preenchimentoPct), alturaCamadaMm: nt(perfil.alturaCamadaMm), tempoImpressaoMin: nt(perfil.tempoImpressaoMin),
-    tempMesaC: nt(perfil.tempMesaC), tempBicoC: nt(perfil.tempBicoC), camadas: nt(perfil.camadas), volumeG: nt(perfil.volumeG), purgaG: nt(perfil.purgaG),
+    tempMesaC: nt(perfil.tempMesaC), tempBicoC: nt(perfil.tempBicoC), camadas: nt(perfil.camadas),
   });
-  const [filamentoMaterialId, setFilamentoMaterialId] = useState(p.inicial.filamentoMaterialId ?? '');
+  // filamentos usados (um por cor): do estoque, com volume da peça e purga
+  const usosIniciais: UsoFilamento[] = p.inicial.filamentos
+    ?? (p.inicial.filamentoMaterialId ? [{ materialId: p.inicial.filamentoMaterialId, volumeG: perfil.volumeG ?? 0, purgaG: perfil.purgaG ?? 0 }] : []);
+  const [usos, setUsos] = useState<{ materialId: string; volume: string; purga: string }[]>(
+    Array.from({ length: MAX_CORES }, (_, k) => ({ materialId: usosIniciais[k]?.materialId ?? '', volume: nt(usosIniciais[k]?.volumeG), purga: nt(usosIniciais[k]?.purgaG) })),
+  );
   const [fotos, setFotos] = useState<Blob[]>(p.inicial.fotos ?? []);
   const [erro, setErro] = useState('');
   const e3d = linha === 'impressao3d';
@@ -247,7 +252,13 @@ function FormProduto(p: {
     desperdicioPct: Number.isNaN(lerNumero(i.desperdicio || '0')) ? 0 : lerNumero(i.desperdicio || '0'),
     extra: i.extra,
   }));
-  const derivada = receita3d(filamentoMaterialId || null, numCfg('volumeG'), numCfg('purgaG'));
+  const numTxt = (t: string) => { const v = lerNumero(t || '0'); return Number.isNaN(v) ? 0 : Math.max(0, v); };
+  const linhasUso = usos.slice(0, ficha.modoCor === 'multi' ? MAX_CORES : 1);
+  const usosNum: UsoFilamento[] = linhasUso.filter((u) => u.materialId).map((u) => ({ materialId: u.materialId, volumeG: numTxt(u.volume), purgaG: numTxt(u.purga) }));
+  const derivada = receitaFilamentos(usosNum);
+  const filamentosEstoque = p.materiais.some((m) => m.categoria === 'filamento') ? p.materiais.filter((m) => m.categoria === 'filamento') : p.materiais;
+  const nomesCores = usosNum.map((u) => p.info[u.materialId]?.nome ?? '').filter((n) => n);
+  const precisaDe = (mid: string) => derivada.find((i) => i.materialId === mid)?.quantidade ?? 0;
   const receitaFinal = e3d ? (derivada.length ? derivada : p.inicial.receita) : itensNum;
   const r = resumoProduto(receitaFinal, p.info);
   const porLinha = Object.fromEntries(r.linhas.map((l) => [l.materialId, l]));
@@ -264,7 +275,6 @@ function FormProduto(p: {
     const pc = preco.trim() ? lerNumero(preco) : null;
     if (Number.isNaN(t) || t < 0) return setErro('O tempo de trabalho precisa ser um número de minutos.');
     if (pc !== null && (Number.isNaN(pc) || pc < 0)) return setErro('O preço de venda precisa ser um valor em reais.');
-    if (e3d && ficha.modoCor === 'multi' && (ficha.cores ?? []).filter((c) => c.trim()).length > MAX_CORES) return setErro('Multicolorido aceita até 4 cores.');
     for (const i of e3d ? [] : itensNum) {
       if (!(i.quantidade > 0)) return setErro(`Informe a quantidade de “${infoDe(i.materialId)?.nome ?? 'material'}” por unidade (maior que zero).`);
     }
@@ -277,15 +287,22 @@ function FormProduto(p: {
       precoCentavos: pc === null ? null : Math.round(pc * 100),
       receita: e3d ? receitaFinal : itensNum,
       modo: 'catalogo',
-      filamentoMaterialId: e3d ? filamentoMaterialId || null : null,
-      ficha: e3d ? { ...ficha, tipo: '', encadernacao: '', folhas: '', cores: ficha.modoCor === 'multi' ? (ficha.cores ?? []).slice(0, MAX_CORES) : [], pinturaManual: ficha.pintar ? ficha.pinturaManual ?? '' : '' } : ficha,
+      filamentos: e3d ? usosNum : [],
+      filamentoMaterialId: e3d ? usosNum[0]?.materialId ?? null : null,
+      ficha: e3d ? {
+        ...ficha, tipo: '', encadernacao: '', folhas: '',
+        cor: ficha.modoCor === 'multi' ? '' : nomesCores[0] ?? ficha.cor,
+        cores: ficha.modoCor === 'multi' ? (nomesCores.length ? nomesCores : ficha.cores ?? []) : [],
+        pinturaManual: ficha.pintar ? ficha.pinturaManual ?? '' : '',
+      } : ficha,
       colecaoTipo, colecao: colecao.trim(),
       capaId: e3d ? null : capaId || null, miolosIds: e3d ? [] : miolosIds, adesivosIds: e3d ? [] : adesivosIds,
       opcoes: gruposNum,
       perfil3d: e3d ? {
         ...perfil,
         paredes: numCfg('paredes'), preenchimentoPct: Math.min(100, numCfg('preenchimentoPct')), alturaCamadaMm: numCfg('alturaCamadaMm'), tempoImpressaoMin: numCfg('tempoImpressaoMin'),
-        tempMesaC: numCfg('tempMesaC'), tempBicoC: numCfg('tempBicoC'), camadas: Math.round(numCfg('camadas')), volumeG: numCfg('volumeG'), purgaG: numCfg('purgaG'),
+        tempMesaC: numCfg('tempMesaC'), tempBicoC: numCfg('tempBicoC'), camadas: Math.round(numCfg('camadas')),
+        volumeG: usosNum.reduce((t, u) => t + u.volumeG, 0), purgaG: usosNum.reduce((t, u) => t + u.purgaG, 0),
         cor: ficha.modoCor === 'multi' ? 'ams' : 'mono',
       } : null,
       fotos,
@@ -328,20 +345,45 @@ function FormProduto(p: {
           </div>
           <div className="linha" style={{ gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
             <label className="linha"><input type="checkbox" checked={ficha.modoCor === 'mono'} onChange={(e) => setFicha({ ...ficha, modoCor: e.target.checked ? 'mono' : undefined })} /> Monocromático</label>
-            <label className="linha"><input type="checkbox" checked={ficha.modoCor === 'multi'} onChange={(e) => setFicha({ ...ficha, modoCor: e.target.checked ? 'multi' : undefined, cores: e.target.checked ? [...(ficha.cores ?? []), '', '', '', ''].slice(0, MAX_CORES) : ficha.cores })} /> Multicolorido (até 4 cores)</label>
+            <label className="linha"><input type="checkbox" checked={ficha.modoCor === 'multi'} onChange={(e) => setFicha({ ...ficha, modoCor: e.target.checked ? 'multi' : undefined })} /> Multicolorido (até 4 cores)</label>
           </div>
-          {ficha.modoCor === 'multi' ? (
-            <div className="formgrid" style={{ marginTop: 6 }}>
-              {Array.from({ length: MAX_CORES }, (_, k) => (
-                <Campo key={k} rotulo={`Cor ${k + 1}`}>
-                  <input type="text" value={(ficha.cores ?? [])[k] ?? ''} onChange={(e) => { const c = [...(ficha.cores ?? []), '', '', '', ''].slice(0, MAX_CORES); c[k] = e.target.value; setFicha({ ...ficha, cores: c }); }} />
-                </Campo>
-              ))}
+          {ficha.modoCor ? (
+            <div style={{ marginTop: 8 }}>
+              <strong>{ficha.modoCor === 'multi' ? 'Cores e filamentos usados (até 4)' : 'Cor e filamento usado'}</strong>
+              <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))', margin: '2px 0 6px' }}>
+                Escolha o filamento do estoque de cada cor e informe quantas gramas a peça usa (e a purga, na troca de cor). O custo e a conta de quantas dá para imprimir saem daqui.
+              </p>
+              {ficha.modoCor === 'multi' && usosNum.length === 0 && (ficha.cores ?? []).some((c) => c.trim()) && (
+                <p className="suave">Cores anteriores: {(ficha.cores ?? []).filter((c) => c.trim()).join(', ')}. Escolha abaixo os filamentos do estoque para ligá-las.</p>
+              )}
+              {linhasUso.map((u, k) => {
+                const disp = u.materialId ? p.info[u.materialId]?.disponivel ?? 0 : 0;
+                const falta = u.materialId ? precisaDe(u.materialId) - disp : 0;
+                const muda = (parte: Partial<typeof u>) => setUsos(usos.map((x, i) => (i === k ? { ...x, ...parte } : x)));
+                return (
+                  <div key={k} className="linha" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 6 }}>
+                    <Campo rotulo={ficha.modoCor === 'multi' ? `Cor ${k + 1}` : 'Cor'}>
+                      <select value={u.materialId} onChange={(e) => muda({ materialId: e.target.value })}>
+                        <option value="">Escolha o filamento…</option>
+                        {filamentosEstoque.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                      </select>
+                    </Campo>
+                    <Campo rotulo="Volume (g)"><input type="text" inputMode="decimal" value={u.volume} onChange={(e) => muda({ volume: e.target.value })} style={{ width: 90 }} /></Campo>
+                    <Campo rotulo="Purga (g)"><input type="text" inputMode="decimal" value={u.purga} onChange={(e) => muda({ purga: e.target.value })} style={{ width: 90 }} /></Campo>
+                    {u.materialId && (
+                      <span className={falta > 0 ? 'aviso' : 'suave'} style={{ padding: falta > 0 ? '4px 10px' : 0 }}>
+                        Estoque: {disp.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} g
+                        {precisaDe(u.materialId) > 0 && (falta > 0
+                          ? ` — falta ${falta.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} g para 1 peça`
+                          : ` · dá para ${Math.floor(disp / precisaDe(u.materialId))} peça(s)`)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <div className="formgrid" style={{ marginTop: 6 }}>
-              <Campo rotulo="Cor"><input type="text" value={ficha.cor} onChange={(e) => setFicha({ ...ficha, cor: e.target.value })} /></Campo>
-            </div>
+            <p className="suave" style={{ marginTop: 6 }}>Marque monocromático ou multicolorido para escolher a cor e o filamento.</p>
           )}
           <div className="formgrid" style={{ marginTop: 6 }}>
             <Campo rotulo="Acabamentos (ex.: lixado, primer, verniz)">
@@ -402,7 +444,7 @@ function FormProduto(p: {
       {e3d ? (
         <>
           <h2 style={{ marginTop: 18 }}>Configuração de impressão</h2>
-          <p className="suave">A configuração guarda o padrão da peça. O filamento do estoque, com o volume usado e a purga, vira o custo e a conta de quantas dá para imprimir.</p>
+          <p className="suave">A configuração guarda o padrão da peça. Os filamentos (cores), com o volume usado e a purga, ficam na descrição da peça e viram o custo e a conta de quantas dá para imprimir.</p>
           <div className="formgrid">
             <Campo rotulo="Temperatura da mesa (°C)"><input type="text" inputMode="numeric" value={cfg.tempMesaC} onChange={(e) => setCfg({ ...cfg, tempMesaC: e.target.value })} /></Campo>
             <Campo rotulo="Temperatura do bico (°C)"><input type="text" inputMode="numeric" value={cfg.tempBicoC} onChange={(e) => setCfg({ ...cfg, tempBicoC: e.target.value })} /></Campo>
@@ -422,21 +464,13 @@ function FormProduto(p: {
               </select>
             </Campo>
             <Campo rotulo="Preenchimento (%)"><input type="text" inputMode="decimal" value={cfg.preenchimentoPct} onChange={(e) => setCfg({ ...cfg, preenchimentoPct: e.target.value })} /></Campo>
-            <Campo rotulo="Volume usado (g de filamento)"><input type="text" inputMode="decimal" value={cfg.volumeG} onChange={(e) => setCfg({ ...cfg, volumeG: e.target.value })} /></Campo>
-            <Campo rotulo="Purga (g, na troca de cor)"><input type="text" inputMode="decimal" value={cfg.purgaG} onChange={(e) => setCfg({ ...cfg, purgaG: e.target.value })} /></Campo>
             <Campo rotulo="Tempo de impressão (min)"><input type="text" inputMode="decimal" value={cfg.tempoImpressaoMin} onChange={(e) => setCfg({ ...cfg, tempoImpressaoMin: e.target.value })} /></Campo>
-            <Campo rotulo="Filamento do estoque (para custo e estoque)">
-              <select value={filamentoMaterialId} onChange={(e) => setFilamentoMaterialId(e.target.value)}>
-                <option value="">Escolha…</option>
-                {(p.materiais.some((m) => m.categoria === 'filamento') ? p.materiais.filter((m) => m.categoria === 'filamento') : p.materiais).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-              </select>
-            </Campo>
           </div>
           <Campo rotulo="Observações da impressão">
             <input type="text" value={perfil.observacoes} onChange={(e) => setPerfil({ ...perfil, observacoes: e.target.value })} />
           </Campo>
           {!derivada.length && p.inicial.receita.length > 0 && (
-            <p className="suave">Esta peça tem uma receita antiga ({p.inicial.receita.length} material(is)) que continua valendo até você escolher o filamento e informar o volume usado.</p>
+            <p className="suave">Esta peça tem uma receita antiga ({p.inicial.receita.length} material(is)) que continua valendo até você escolher os filamentos e informar o volume usado (em “Cor e filamento”).</p>
           )}
           <div className="cartao" style={{ background: 'var(--neutro)' }}>
             <strong>Custo de material por peça: {receitaFinal.length ? centavosParaTexto(r.custoCentavos) : '—'}</strong>

@@ -46,10 +46,21 @@ export interface ItemProduto {
   extra: boolean; // extra: se faltar, o produto sai sem ele (não limita a produção)
 }
 
-/** Receita de uma peça 3D a partir da configuração: filamento do estoque (em gramas) = volume usado + purga. */
-export function receita3d(materialId: string | null | undefined, volumeG: number, purgaG: number): ItemProduto[] {
-  const q = Math.max(0, volumeG || 0) + Math.max(0, purgaG || 0);
-  return materialId && q > 0 ? [{ materialId, quantidade: q, desperdicioPct: 0, extra: false }] : [];
+/** Um filamento do estoque usado na peça: volume da peça e purga (troca de cor), em gramas. */
+export interface UsoFilamento {
+  materialId: string;
+  volumeG: number;
+  purgaG: number;
+}
+
+/** Receita de uma peça 3D: cada filamento do estoque (em gramas) = volume usado + purga; o mesmo filamento em duas linhas soma. */
+export function receitaFilamentos(usos: UsoFilamento[]): ItemProduto[] {
+  const soma: Record<string, number> = {};
+  for (const u of usos) {
+    const q = Math.max(0, u.volumeG || 0) + Math.max(0, u.purgaG || 0);
+    if (u.materialId && q > 0) soma[u.materialId] = (soma[u.materialId] ?? 0) + q;
+  }
+  return Object.entries(soma).map(([materialId, quantidade]) => ({ materialId, quantidade, desperdicioPct: 0, extra: false }));
 }
 
 export interface Perfil3D {

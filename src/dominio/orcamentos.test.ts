@@ -35,11 +35,16 @@ test('ficha resume em uma linha', () => {
   assert.equal(resumoFicha(undefined), '');
 });
 
-import { receita3d } from './produtos.ts';
+import { receitaFilamentos } from './produtos.ts';
 test('3D: receita sai do volume usado + purga; resumo da ficha 3D', () => {
-  assert.deepEqual(receita3d('pla-azul', 18, 4), [{ materialId: 'pla-azul', quantidade: 22, desperdicioPct: 0, extra: false }]);
-  assert.deepEqual(receita3d(null, 18, 4), []);
-  assert.deepEqual(receita3d('x', 0, 0), []);
+  assert.deepEqual(receitaFilamentos([{ materialId: 'pla-azul', volumeG: 18, purgaG: 4 }]), [{ materialId: 'pla-azul', quantidade: 22, desperdicioPct: 0, extra: false }]);
+  assert.deepEqual(receitaFilamentos([{ materialId: '', volumeG: 18, purgaG: 4 }]), []);
+  assert.deepEqual(receitaFilamentos([{ materialId: 'x', volumeG: 0, purgaG: 0 }]), []);
+  // várias cores: cada filamento com o seu consumo; o mesmo filamento em duas linhas soma
+  assert.deepEqual(
+    receitaFilamentos([{ materialId: 'verde', volumeG: 10, purgaG: 2 }, { materialId: 'marrom', volumeG: 5, purgaG: 1 }, { materialId: 'verde', volumeG: 3, purgaG: 0 }]).map((i) => [i.materialId, i.quantidade]),
+    [['verde', 15], ['marrom', 6]],
+  );
   assert.equal(resumoFicha({ tamanho: '8 x 5', modoCor: 'multi', cores: ['Azul', 'Branco', ''], filamento: 'PLA', acabamentos: 'lixado', pintar: true }, 'impressao3d'), '8 x 5 cm · Azul + Branco · multicolorido · PLA · lixado · pintura manual');
   assert.equal(resumoFicha({ tamanho: '10', cor: 'Rosa', modoCor: 'mono', filamento: 'Outro', filamentoOutro: 'Silk' }, 'impressao3d'), '10 cm · Rosa · monocromático · Silk');
 });
