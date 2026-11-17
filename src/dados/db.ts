@@ -96,6 +96,7 @@ export interface Produto {
   colecaoTipo?: TipoColecao;
   colecao?: string; // agrupamento: coleção, temporada, data comemorativa ou temática
   prontos?: number; // unidades já prontas (feitas)
+  filamentoMaterialId?: string | null; // 3D: filamento do estoque (a receita sai do volume + purga)
   capaId?: string | null; // do Mostruário
   miolosIds?: string[];
   adesivosIds?: string[];
@@ -140,6 +141,8 @@ export interface Pedido {
 export interface FormularioRegistro {
   id: string;
   grupos: GrupoOpcoes[];
+  versao?: number; // versão das perguntas padrão que originou este registro
+  editado?: boolean; // a dona mexeu: não é substituído por versões novas do padrão
   atualizadoEm: string;
 }
 

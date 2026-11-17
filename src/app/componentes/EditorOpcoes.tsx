@@ -2,19 +2,19 @@ import type { ReactNode } from 'react';
 import type { Material } from '../../dados/db.ts';
 import { novoId } from '../../dados/db.ts';
 import { lerNumero } from '../../dominio/materiais.ts';
-import { TIPOS_GRUPO, ehEscolha, type GrupoOpcoes, type OpcaoProduto, type TipoGrupo } from '../../dominio/opcoes.ts';
+import { TIPOS_GRUPO, condicoesDe, ehEscolha, type Condicao, type GrupoOpcoes, type OpcaoProduto, type TipoGrupo } from '../../dominio/opcoes.ts';
 import { formularioPadrao } from '../../dominio/formularioPadrao.ts';
 import type { InfoMaterial } from '../../dominio/produtos.ts';
 
 export interface OpcaoForm { id: string; nome: string; materialId: string; quantidade: string; desperdicio: string; acrescimo: string; padrao: boolean; variantes: string[]; pedeTexto: string }
-export interface GrupoForm { id: string; nome: string; descricao: string; tipo: TipoGrupo; obrigatorio: boolean; permiteOutro: boolean; mostrarSe: { grupoId: string; opcaoIds: string[] } | null; opcoes: OpcaoForm[] }
+export interface GrupoForm { id: string; nome: string; descricao: string; tipo: TipoGrupo; obrigatorio: boolean; permiteOutro: boolean; condicoes: Condicao[]; maxSelecao: string; opcoes: OpcaoForm[] }
 
 const txt = (n: number) => (n ? String(n).replace('.', ',') : '');
 const num = (s: string) => { const v = lerNumero(s || '0'); return Number.isNaN(v) ? 0 : Math.max(0, v); };
 
 export function gruposParaForm(gs: GrupoOpcoes[]): GrupoForm[] {
   return gs.map((g) => ({
-    id: g.id, nome: g.nome, descricao: g.descricao ?? '', tipo: g.tipo, obrigatorio: g.obrigatorio, permiteOutro: !!g.permiteOutro, mostrarSe: g.mostrarSe ?? null,
+    id: g.id, nome: g.nome, descricao: g.descricao ?? '', tipo: g.tipo, obrigatorio: g.obrigatorio, permiteOutro: !!g.permiteOutro, condicoes: condicoesDe(g), maxSelecao: g.maxSelecao ? String(g.maxSelecao) : '',
     opcoes: g.opcoes.map((o) => ({
       id: o.id, nome: o.nome, materialId: o.materialId ?? '', quantidade: txt(o.quantidade), desperdicio: txt(o.desperdicioPct),
       acrescimo: o.acrescimoCentavos === null ? '' : (o.acrescimoCentavos / 100).toFixed(2).replace('.', ','), padrao: o.padrao, variantes: o.variantes ?? [], pedeTexto: o.pedeTexto ?? '',
@@ -26,7 +26,8 @@ export function gruposDoForm(gs: GrupoForm[]): GrupoOpcoes[] {
   return gs.map((g) => ({
     id: g.id, nome: g.nome.trim(), ...(g.descricao.trim() ? { descricao: g.descricao.trim() } : {}), tipo: g.tipo, obrigatorio: g.tipo === 'secao' ? false : g.obrigatorio,
     ...(g.permiteOutro && ehEscolha(g.tipo) ? { permiteOutro: true } : {}),
-    ...(g.mostrarSe && g.mostrarSe.opcaoIds.length ? { mostrarSe: g.mostrarSe } : {}),
+    ...(g.condicoes.some((c) => c.grupoId && c.opcaoIds.length) ? { mostrarSe: g.condicoes.filter((c) => c.grupoId && c.opcaoIds.length) } : {}),
+    ...(g.tipo === 'multipla' && num(g.maxSelecao) >= 1 ? { maxSelecao: Math.round(num(g.maxSelecao)) } : {}),
     opcoes: (ehEscolha(g.tipo) ? g.opcoes : []).map((o): OpcaoProduto => ({
       id: o.id, nome: o.nome.trim(), materialId: o.variantes.length ? null : o.materialId || null,
       ...(o.variantes.length ? { variantes: o.variantes } : {}),
@@ -80,28 +81,39 @@ export function EditorOpcoes(p: { catalogo: boolean; titulo?: string; explicacao
               )}
             </div>
           )}
+          {g.tipo === 'multipla' && (
+            <div style={{ marginTop: 6 }}>
+              <Campo rotulo="Limite de respostas (vazio = sem limite)">
+                <input type="text" inputMode="numeric" value={g.maxSelecao} onChange={(e) => setG(gi, { maxSelecao: e.target.value })} style={{ width: 80 }} />
+              </Campo>
+            </div>
+          )}
           {grupos.slice(0, gi).some((x) => ehEscolha(x.tipo)) && (
-            <details style={{ marginTop: 6 }} open={!!g.mostrarSe}>
-              <summary className="suave">{g.mostrarSe ? 'Só aparece em certos casos' : 'Aparecer só em certos casos (opcional)'}</summary>
-              <div className="linha" style={{ gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-                <span>Só mostrar se</span>
-                <select value={g.mostrarSe?.grupoId ?? ''} onChange={(e) => setG(gi, { mostrarSe: e.target.value ? { grupoId: e.target.value, opcaoIds: [] } : null })}>
-                  <option value="">— sempre aparece —</option>
-                  {grupos.slice(0, gi).filter((x) => ehEscolha(x.tipo)).map((x) => <option key={x.id} value={x.id}>{x.nome || '(sem nome)'}</option>)}
-                </select>
-              </div>
-              {g.mostrarSe && (
-                <div style={{ marginTop: 4 }}>
-                  <span className="suave">for uma destas respostas:</span>
-                  {(grupos.find((x) => x.id === g.mostrarSe!.grupoId)?.opcoes ?? []).map((op) => (
+            <details style={{ marginTop: 6 }} open={g.condicoes.length > 0}>
+              <summary className="suave">{g.condicoes.length ? 'Só aparece em certos casos' : 'Aparecer só em certos casos (opcional)'}</summary>
+              {g.condicoes.map((c, ci) => (
+                <div key={ci} style={{ marginTop: 8, paddingLeft: 8, borderLeft: '3px solid var(--borda, #0002)' }}>
+                  <div className="linha" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    <span>{ci === 0 ? 'Só mostrar se' : 'ou se'}</span>
+                    <select value={c.grupoId} onChange={(e) => setG(gi, { condicoes: g.condicoes.map((x, k) => (k === ci ? { grupoId: e.target.value, opcaoIds: [] } : x)) })}>
+                      <option value="">— escolha a pergunta —</option>
+                      {grupos.slice(0, gi).filter((x) => ehEscolha(x.tipo)).map((x) => <option key={x.id} value={x.id}>{x.nome || '(sem nome)'}</option>)}
+                    </select>
+                    <button className="btn" onClick={() => setG(gi, { condicoes: g.condicoes.filter((_, k) => k !== ci) })}>Tirar</button>
+                  </div>
+                  {c.grupoId && <span className="suave">a resposta for:</span>}
+                  {(grupos.find((x) => x.id === c.grupoId)?.opcoes ?? []).map((op) => (
                     <label key={op.id} className="linha" style={{ gap: 6 }}>
-                      <input type="checkbox" checked={g.mostrarSe!.opcaoIds.includes(op.id)}
-                        onChange={(e) => setG(gi, { mostrarSe: { grupoId: g.mostrarSe!.grupoId, opcaoIds: e.target.checked ? [...g.mostrarSe!.opcaoIds, op.id] : g.mostrarSe!.opcaoIds.filter((v) => v !== op.id) } })} />
+                      <input type="checkbox" checked={c.opcaoIds.includes(op.id)}
+                        onChange={(e) => setG(gi, { condicoes: g.condicoes.map((x, k) => (k === ci ? { ...x, opcaoIds: e.target.checked ? [...x.opcaoIds, op.id] : x.opcaoIds.filter((v) => v !== op.id) } : x)) })} />
                       {op.nome}
                     </label>
                   ))}
                 </div>
-              )}
+              ))}
+              <div style={{ marginTop: 6 }}>
+                <button className="btn" onClick={() => setG(gi, { condicoes: [...g.condicoes, { grupoId: '', opcaoIds: [] }] })}>{g.condicoes.length ? '+ ou outra condição' : '+ Condição'}</button>
+              </div>
             </details>
           )}
           {ehEscolha(g.tipo) && g.opcoes.map((o, oi) => {
@@ -164,7 +176,7 @@ export function EditorOpcoes(p: { catalogo: boolean; titulo?: string; explicacao
         </div>
       ))}
       <div className="linha" style={{ marginTop: 8, gap: 8 }}>
-        <button className="btn" onClick={() => p.aoMudar([...grupos, { id: novoId(), nome: '', descricao: '', tipo: 'unica', obrigatorio: false, permiteOutro: false, mostrarSe: null, opcoes: [] }])}>+ Adicionar pergunta</button>
+        <button className="btn" onClick={() => p.aoMudar([...grupos, { id: novoId(), nome: '', descricao: '', tipo: 'unica', obrigatorio: false, permiteOutro: false, condicoes: [], maxSelecao: '', opcoes: [] }])}>+ Adicionar pergunta</button>
         <button className="btn" onClick={() => p.aoMudar([...grupos, ...gruposParaForm(formularioPadrao(novoId))])}>+ Adicionar perguntas padrão</button>
       </div>
     </>

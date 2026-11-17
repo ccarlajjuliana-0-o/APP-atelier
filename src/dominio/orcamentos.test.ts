@@ -34,3 +34,12 @@ test('ficha resume em uma linha', () => {
   assert.equal(resumoFicha({ tipo: 'Planner diário', tamanho: 'A5', cor: 'Azul', encadernacao: 'Wire-o', folhas: '90' }), 'Planner diário · A5 · Azul · Wire-o · 90 folhas');
   assert.equal(resumoFicha(undefined), '');
 });
+
+import { receita3d } from './produtos.ts';
+test('3D: receita sai do volume usado + purga; resumo da ficha 3D', () => {
+  assert.deepEqual(receita3d('pla-azul', 18, 4), [{ materialId: 'pla-azul', quantidade: 22, desperdicioPct: 0, extra: false }]);
+  assert.deepEqual(receita3d(null, 18, 4), []);
+  assert.deepEqual(receita3d('x', 0, 0), []);
+  assert.equal(resumoFicha({ tamanho: '8 x 5', modoCor: 'multi', cores: ['Azul', 'Branco', ''], filamento: 'PLA', acabamentos: 'lixado', pintar: true }, 'impressao3d'), '8 x 5 cm · Azul + Branco · multicolorido · PLA · lixado · pintura manual');
+  assert.equal(resumoFicha({ tamanho: '10', cor: 'Rosa', modoCor: 'mono', filamento: 'Outro', filamentoOutro: 'Silk' }, 'impressao3d'), '10 cm · Rosa · monocromático · Silk');
+});

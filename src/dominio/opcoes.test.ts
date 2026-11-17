@@ -146,3 +146,50 @@ test('extras: valores combinados, avulso somando e remoção', () => {
   e = removerEscolha(e, g.id, '__avulso:x');
   assert.equal(acrescimoTotal(e), 1750);
 });
+
+test('versão: acompanhamentos com limite conforme Premium ou Deluxe/Master', () => {
+  let n = 0;
+  const m = formularioPadrao(() => `i${n++}`);
+  const por = (nome: string) => m.filter((g) => g.nome.startsWith(nome));
+  const tipo = m.find((g) => g.nome.startsWith('Caderno,'))!;
+  const [vGeral, vPlanner] = por('Qual versão');
+  const [ate3, ate5] = por('Quais acompanhamentos');
+  const marca = (g: GrupoOpcoes, inicio: string, es: ReturnType<typeof alternarEscolha> = []) => alternarEscolha(es, g, g.opcoes.find((o) => o.nome.startsWith(inicio))!, {}, 1);
+  // planner + Premium
+  let e = marca(tipo, 'Planner');
+  assert.ok(grupoVisivel(vPlanner, m, e) && !grupoVisivel(vGeral, m, e));
+  assert.ok(vPlanner.opcoes[0].nome.includes('miolo de anotações ou check list'));
+  assert.ok(!grupoVisivel(ate3, m, e) && !grupoVisivel(ate5, m, e));
+  e = marca(vPlanner, 'Premium', e);
+  assert.ok(grupoVisivel(ate3, m, e) && !grupoVisivel(ate5, m, e));
+  // caderno + Master
+  let c = marca(tipo, 'Caderno');
+  c = marca(vGeral, 'Master', c);
+  assert.ok(grupoVisivel(ate5, m, c) && !grupoVisivel(ate3, m, c));
+  // essential não tem acompanhamentos
+  assert.ok(!grupoVisivel(ate3, m, marca(vGeral, 'Essential', marca(tipo, 'Caderno'))));
+  // limite de 3
+  let r = e;
+  for (const o of ate3.opcoes.slice(0, 5)) r = alternarEscolha(r, ate3, o, {}, 1);
+  assert.equal(r.filter((x) => x.grupoId === ate3.id).length, 3);
+});
+
+test('agenda datada abre "como"; sem opção indiferente', () => {
+  let n = 0;
+  const m = formularioPadrao(() => `i${n++}`);
+  const tipo = m.find((g) => g.nome.startsWith('Caderno,'))!;
+  const datada = m.find((g) => g.nome === 'Você prefere a agenda:')!;
+  const como = m.find((g) => g.nome.startsWith('Datada: como'))!;
+  assert.ok(!datada.opcoes.some((o) => /indiferente/i.test(o.nome)));
+  let e = alternarEscolha([], tipo, tipo.opcoes.find((o) => o.nome === 'Agenda')!, {}, 1);
+  assert.ok(!grupoVisivel(como, m, e));
+  e = alternarEscolha(e, datada, datada.opcoes.find((o) => o.nome === 'Datada')!, {}, 1);
+  assert.ok(grupoVisivel(como, m, e));
+  // a arte da capa vem antes de cores e estilo, e estes são de escolha única
+  const nomes = m.map((g) => g.nome);
+  assert.ok(nomes.indexOf('Como você prefere definir a arte da capa?') < nomes.indexOf('Quais cores você mais gosta?'));
+  assert.equal(m.find((g) => g.nome === 'Quais cores você mais gosta?')!.tipo, 'unica');
+  assert.equal(m.find((g) => g.nome === 'Você prefere um estilo mais:')!.tipo, 'unica');
+  assert.ok(m.some((g) => g.nome === 'Tipo de bordas do miolo'));
+  assert.ok(!nomes.some((x) => /Cultura|Reflexão & Desenvolvimento/.test(x)));
+});

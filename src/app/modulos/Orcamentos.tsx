@@ -45,7 +45,9 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
   const [disp, setDisp] = useState<Record<string, number>>({});
   const [mult, setMult] = useState({ encadernacao: 1, impressao3d: 1 });
   const [filtro, setFiltro] = useState<Filtro>('aberto');
-  const [clienteFiltro, setClienteFiltro] = useState('');
+  const [clienteSel, setClienteSel] = useState(''); // cliente escolhida aqui: filtra a lista e vale para o novo orçamento
+  const [nomeNovo, setNomeNovo] = useState('');
+  const [editandoPerguntas, setEditandoPerguntas] = useState(false);
   const [aberto, setAberto] = useState<Orcamento | null>(null);
   const [msg, setMsg] = useState('');
   const painelRef = useRef<HTMLDivElement | null>(null);
@@ -75,7 +77,8 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
   const nomeCliente = (id: string | null) => clientes.find((c) => c.id === id)?.nome ?? '—';
   const visiveis = lista
     .filter((o) => (filtro === 'todos' ? true : o.status === filtro))
-    .filter((o) => !clienteFiltro || o.clienteId === clienteFiltro);
+    .filter((o) => !clienteSel || clienteSel === '__novo' || o.clienteId === clienteSel);
+  const podeNovo = (clienteSel && clienteSel !== '__novo') || (clienteSel === '__novo' && nomeNovo.trim() !== '');
 
   return (
     <>
@@ -87,9 +90,19 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
       <div className="faixa" />
 
       <div className="cartao">
-        <div className="linha">
-          <button className="btn primario" onClick={() => setAberto(orcamentoNovo())}>Novo orçamento</button>
+        <div className="linha" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
+          <Campo rotulo="Cliente">
+            <select value={clienteSel} onChange={(e) => setClienteSel(e.target.value)}>
+              <option value="">Todas as clientes</option>
+              {clientes.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              <option value="__novo">+ Nova cliente…</option>
+            </select>
+          </Campo>
+          {clienteSel === '__novo' && <Campo rotulo="Nome da nova cliente"><input type="text" value={nomeNovo} onChange={(e) => setNomeNovo(e.target.value)} /></Campo>}
+          <button className="btn primario" disabled={!podeNovo} onClick={() => { setMsg(''); setAberto({ ...orcamentoNovo(), clienteId: clienteSel && clienteSel !== '__novo' ? clienteSel : null }); }}>Novo orçamento</button>
+          <button className="btn" onClick={() => setEditandoPerguntas(!editandoPerguntas)}>{editandoPerguntas ? 'Fechar perguntas' : 'Editar perguntas do formulário'}</button>
         </div>
+        {!podeNovo && <p className="suave" style={PEQUENO}>Escolha a cliente aqui para começar um novo orçamento (ou cadastre uma nova).</p>}
         {msg && <p role="status" className="ok">{msg}</p>}
         <div className="linha" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           {(['aberto', 'aprovado', 'recusado', 'todos'] as Filtro[]).map((f) => (
@@ -97,10 +110,6 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
               {f === 'todos' ? 'Todos' : STATUS_ORCAMENTO[f]}{f !== 'todos' && ` (${lista.filter((o) => o.status === f).length})`}
             </button>
           ))}
-          <select value={clienteFiltro} onChange={(e) => setClienteFiltro(e.target.value)} aria-label="Cliente">
-            <option value="">Todas as clientes</option>
-            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
         </div>
       </div>
 
@@ -109,7 +118,7 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
           <Detalhe
             key={aberto.id || 'novo'}
             inicial={aberto}
-            clientes={clientes} produtos={produtos} extras={extras} perguntas={perguntas} info={info} mult={mult}
+            clientes={clientes} nomeNovo={clienteSel === '__novo' && !aberto.id ? nomeNovo.trim() : ''} produtos={produtos} extras={extras} perguntas={perguntas} info={info} mult={mult}
             ir={p.ir}
             fechar={() => setAberto(null)}
             aoMudar={async (texto, reabrir) => { setMsg(texto); await recarregar(); setAberto(reabrir ?? null); }}
@@ -137,7 +146,7 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
         </table>
       </div>
 
-      <PerguntasDoOrcamento perguntas={perguntas} materiais={materiais.filter((m) => m.ativo)} info={info} aoSalvar={async (t) => { setMsg(t); await recarregar(); }} />
+      {editandoPerguntas && <PerguntasDoOrcamento perguntas={perguntas} materiais={materiais.filter((m) => m.ativo)} info={info} aoSalvar={async (t) => { setMsg(t); setEditandoPerguntas(false); await recarregar(); }} />}
     </>
   );
 }
@@ -145,6 +154,7 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
 function Detalhe(p: {
   inicial: Orcamento;
   clientes: Cliente[];
+  nomeNovo: string; // cliente nova escolhida na tela principal (criada ao salvar)
   produtos: Produto[];
   extras: ExtraCatalogo[];
   perguntas: GrupoOpcoes[];
@@ -156,8 +166,7 @@ function Detalhe(p: {
 }) {
   const ini = p.inicial;
   const editavel = ini.status === 'aberto';
-  const [clienteId, setClienteId] = useState(ini.clienteId ?? '');
-  const [clienteNovo, setClienteNovo] = useState('');
+  const [clienteId, setClienteId] = useState(ini.clienteId ?? ''); // só muda aqui para orçamentos antigos sem cliente
   const [canal, setCanal] = useState(ini.canal);
   const [obs, setObs] = useState(ini.observacoes);
   const [itens, setItens] = useState<ItemForm[]>(
@@ -212,10 +221,9 @@ function Detalhe(p: {
   async function salvar(nota?: string): Promise<Orcamento | null> {
     setErro('');
     let cid: string | null = clienteId || null;
-    if (clienteId === '__novo') {
-      const nome = clienteNovo.trim();
-      if (!nome) { setErro('Escreva o nome da nova cliente.'); return null; }
-      cid = (await salvarCliente({ id: '', nome, contato: '', email: '', origem: canal, observacoes: '', ativo: true, atualizadoEm: '' })).id;
+    if (!cid && p.nomeNovo) {
+      cid = (await salvarCliente({ id: '', nome: p.nomeNovo, contato: '', email: '', origem: canal, observacoes: '', ativo: true, atualizadoEm: '' })).id;
+      setClienteId(cid);
     }
     const lista = converter();
     if (lista.some((i) => !i.descricao)) { setErro('Todo item precisa de uma descrição.'); return null; }
@@ -254,14 +262,17 @@ function Detalhe(p: {
       {ini.pedidoNumero && <p className="suave" style={{ marginTop: 0 }}>Virou o pedido #{ini.pedidoNumero}. <button className="btn" onClick={() => p.ir('pedidos')}>Ver em Pedidos</button></p>}
 
       <div className="formgrid">
-        <Campo rotulo="Cliente">
-          <select value={clienteId} disabled={!editavel} onChange={(e) => setClienteId(e.target.value)}>
-            <option value="">Escolha…</option>
-            {p.clientes.filter((c) => c.ativo || c.id === clienteId).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            <option value="__novo">+ Cadastrar nova cliente</option>
-          </select>
-        </Campo>
-        {clienteId === '__novo' && <Campo rotulo="Nome da nova cliente"><input type="text" value={clienteNovo} onChange={(e) => setClienteNovo(e.target.value)} /></Campo>}
+        <div>
+          <span className="suave">Cliente</span>
+          {clienteId || p.nomeNovo ? (
+            <div><strong>{p.nomeNovo && !clienteId ? `${p.nomeNovo} (nova)` : p.clientes.find((c) => c.id === clienteId)?.nome ?? '—'}</strong></div>
+          ) : (
+            <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+              <option value="">Escolha…</option>
+              {p.clientes.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          )}
+        </div>
         <Campo rotulo="Como a cliente pediu">
           <select value={canal} disabled={!editavel} onChange={(e) => setCanal(e.target.value)}>
             {CANAIS.map((c) => <option key={c}>{c}</option>)}

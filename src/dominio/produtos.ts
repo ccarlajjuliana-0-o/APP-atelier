@@ -11,14 +11,31 @@ export interface FichaProduto {
   cor: string;
   encadernacao: string;
   folhas: string;
+  // impressão 3D
+  filamento?: string; // PLA, PETG, ABS, TPU ou Outro
+  filamentoOutro?: string;
+  modoCor?: 'mono' | 'multi'; // monocromático ou multicolorido (até 4 cores)
+  cores?: string[];
+  acabamentos?: string;
+  pintar?: boolean; // vai ser pintado à mão?
+  pinturaManual?: string;
 }
+export const FILAMENTOS = ['PLA', 'PETG', 'ABS', 'TPU', 'Outro'];
+export const BICOS = ['Latão', 'Aço endurecido', 'Aço inox', 'Rubi', 'Outro'];
+export const MAX_CORES = 4;
 export const FICHA_VAZIA: FichaProduto = { tipo: '', tamanho: '', cor: '', encadernacao: '', folhas: '' };
 
 export type TipoColecao = 'colecao' | 'temporada' | 'data' | 'tema';
 export const TIPOS_COLECAO: Record<TipoColecao, string> = { colecao: 'Coleção', temporada: 'Temporada', data: 'Data comemorativa', tema: 'Temática' };
 
-export function resumoFicha(f: Partial<FichaProduto> | undefined): string {
+export function resumoFicha(f: Partial<FichaProduto> | undefined, linha: Linha = 'encadernacao'): string {
   if (!f) return '';
+  if (linha === 'impressao3d') {
+    const cores = f.modoCor === 'multi' ? (f.cores ?? []).filter((c) => c.trim()).join(' + ') : f.cor;
+    const fil = f.filamento === 'Outro' ? f.filamentoOutro : f.filamento;
+    return [f.tamanho && `${f.tamanho} cm`, cores, f.modoCor === 'multi' ? 'multicolorido' : f.modoCor === 'mono' ? 'monocromático' : '', fil, f.acabamentos, f.pintar ? 'pintura manual' : '']
+      .filter((x) => !!x && String(x).trim()).join(' · ');
+  }
   return [f.tipo, f.tamanho, f.cor, f.encadernacao, f.folhas && `${f.folhas} folhas`].filter((x) => !!x && String(x).trim()).join(' · ');
 }
 
@@ -29,7 +46,20 @@ export interface ItemProduto {
   extra: boolean; // extra: se faltar, o produto sai sem ele (não limita a produção)
 }
 
+/** Receita de uma peça 3D a partir da configuração: filamento do estoque (em gramas) = volume usado + purga. */
+export function receita3d(materialId: string | null | undefined, volumeG: number, purgaG: number): ItemProduto[] {
+  const q = Math.max(0, volumeG || 0) + Math.max(0, purgaG || 0);
+  return materialId && q > 0 ? [{ materialId, quantidade: q, desperdicioPct: 0, extra: false }] : [];
+}
+
 export interface Perfil3D {
+  tempMesaC?: number;
+  tempBicoC?: number;
+  tipoBico?: string;
+  tipoBicoOutro?: string;
+  camadas?: number; // número de camadas
+  volumeG?: number; // volume usado na peça, em gramas
+  purgaG?: number; // purga (troca de cor), em gramas
   paredes: number;
   preenchimentoTipo: string;
   preenchimentoPct: number;

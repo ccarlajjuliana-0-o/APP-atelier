@@ -14,6 +14,9 @@ export interface OpcaoProduto {
   variantes?: string[]; // materiais do estoque entre os quais o cliente escolhe (ex.: tipos de cantoneira); só aparecem os que têm estoque
 }
 
+export interface Condicao { grupoId: string; opcaoIds: string[] }
+export const condicoesDe = (g: { mostrarSe?: Condicao | Condicao[] }): Condicao[] => (g.mostrarSe ? (Array.isArray(g.mostrarSe) ? g.mostrarSe : [g.mostrarSe]) : []);
+
 export type TipoGrupo = 'unica' | 'multipla' | 'texto' | 'paragrafo' | 'email' | 'secao';
 export const TIPOS_GRUPO: Record<TipoGrupo, string> = {
   unica: 'Escolhe uma', multipla: 'Pode escolher várias', texto: 'Resposta curta', paragrafo: 'Resposta longa', email: 'E-mail', secao: 'Título de seção',
@@ -30,7 +33,8 @@ export interface GrupoOpcoes {
   tipo: TipoGrupo;
   obrigatorio: boolean;
   permiteOutro?: boolean; // campo "Outro:" nas perguntas de escolha
-  mostrarSe?: { grupoId: string; opcaoIds: string[] }; // só aparece se a pergunta indicada tiver uma destas respostas
+  mostrarSe?: Condicao | Condicao[]; // aparece se QUALQUER condição valer (a pergunta indicada tem uma destas respostas)
+  maxSelecao?: number; // em "pode escolher várias": limite de respostas
   opcoes: OpcaoProduto[];
 }
 
@@ -110,6 +114,8 @@ export function definirTexto(escolhas: EscolhaItem[], g: GrupoOpcoes, texto: str
 
 /** "Outro:" — texto null desmarca; em grupo de escolha única, marcar troca as demais. */
 export function definirOutro(escolhas: EscolhaItem[], g: GrupoOpcoes, texto: string | null): EscolhaItem[] {
+  if (texto !== null && g.tipo === 'multipla' && g.maxSelecao && !escolhas.some((e) => e.grupoId === g.id && e.opcaoId === ID_OUTRO)
+    && escolhas.filter((e) => e.grupoId === g.id).length >= g.maxSelecao) return escolhas; // limite atingido
   const base = escolhas.filter((e) => !(e.grupoId === g.id && (e.opcaoId === ID_OUTRO || (texto !== null && g.tipo === 'unica'))));
   if (texto === null) return base;
   return [...base, { grupoId: g.id, grupoNome: g.nome, opcaoId: ID_OUTRO, opcaoNome: texto.trim() || 'Outro', materialId: null, quantidade: 0, acrescimoCentavos: 0, outro: true }];
@@ -131,6 +137,7 @@ export function alternarEscolha(escolhas: EscolhaItem[], g: GrupoOpcoes, o: Opca
   const marcada = escolhas.some((e) => e.grupoId === g.id && e.opcaoId === o.id);
   const resto = escolhas.filter((e) => !(e.grupoId === g.id && (g.tipo === 'unica' || e.opcaoId === o.id)));
   if (marcada) return g.obrigatorio && g.tipo === 'unica' ? escolhas : resto;
+  if (g.tipo === 'multipla' && g.maxSelecao && escolhas.filter((e) => e.grupoId === g.id).length >= g.maxSelecao) return escolhas; // limite atingido
   // marcar uma opção em escolha única também desfaz um "Outro" digitado
   return [...resto, criarEscolha(g, o, info, multiplicador, undefined, unidades)];
 }
@@ -148,12 +155,12 @@ export function removerEscolha(escolhas: EscolhaItem[], grupoId: string, opcaoId
 }
 
 export function grupoVisivel(g: GrupoOpcoes, grupos: GrupoOpcoes[], escolhas: EscolhaItem[]): boolean {
-  const c = g.mostrarSe;
-  if (!c) return true;
-  const pai = grupos.find((x) => x.id === c.grupoId);
-  if (!pai) return true;
-  if (!grupoVisivel(pai, grupos, escolhas)) return false;
-  return escolhas.some((e) => e.grupoId === c.grupoId && c.opcaoIds.includes(e.opcaoId));
+  const cs = condicoesDe(g).filter((c) => c.opcaoIds.length > 0 && grupos.some((x) => x.id === c.grupoId));
+  if (cs.length === 0) return true;
+  return cs.some((c) => {
+    const pai = grupos.find((x) => x.id === c.grupoId)!;
+    return grupoVisivel(pai, grupos, escolhas) && escolhas.some((e) => e.grupoId === c.grupoId && c.opcaoIds.includes(e.opcaoId));
+  });
 }
 
 /** Descarta respostas de perguntas que deixaram de aparecer (ex.: trocou wire-o por disco). */

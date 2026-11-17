@@ -38,7 +38,7 @@ export function FormularioItem(p: {
         const cabeca = (
           <>
             <strong>{g.nome}</strong>{g.obrigatorio && ' *'}{' '}
-            <span className="suave">{g.tipo === 'multipla' ? '(pode marcar várias)' : ''}</span>
+            <span className="suave">{g.tipo === 'multipla' ? (g.maxSelecao ? `(escolha até ${g.maxSelecao} — ${doGrupo.length}/${g.maxSelecao})` : '(pode marcar várias)') : ''}</span>
             {g.descricao && <div className="suave" style={PEQUENO}>{g.descricao}</div>}
           </>
         );
