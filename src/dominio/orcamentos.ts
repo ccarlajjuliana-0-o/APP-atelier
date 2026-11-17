@@ -6,7 +6,7 @@ import type { TipoPedido } from './prazo.ts';
 export type StatusOrcamento = 'aberto' | 'aprovado' | 'recusado';
 export const STATUS_ORCAMENTO: Record<StatusOrcamento, string> = { aberto: 'Em aberto', aprovado: 'Virou pedido', recusado: 'Não fechou' };
 
-export const CANAIS = ['WhatsApp', 'Instagram', 'Shopee', 'Mercado Livre', 'Site', 'Pessoalmente', 'Indicação', 'Outro'];
+export const CANAIS = ['Formulário online', 'WhatsApp', 'Instagram', 'Shopee', 'Mercado Livre', 'Site', 'Pessoalmente', 'Indicação', 'Outro'];
 
 export interface EventoOrcamento {
   em: string; // ISO

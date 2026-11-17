@@ -22,6 +22,8 @@ import { sair, nuvem } from '../dados/nuvem.ts';
 import { iniciarSincronizacaoAutomatica } from '../dados/sync.ts';
 import { iniciarBackupAutomatico } from '../dados/backupNuvem.ts';
 import { Nuvem, EstadoNuvem } from './modulos/Nuvem.tsx';
+import { FormularioPublico } from './modulos/FormularioPublico.tsx';
+import { ehRotaPublica } from '../dominio/publico.ts';
 
 
 const ATIVAS: { id: Tela; nome: string }[] = [
@@ -61,6 +63,15 @@ export function App() {
   const [tela, setTela] = useState<Tela>('inicio');
   const [recolhido, setRecolhido] = useMenuRecolhido();
   const cheia = useTelaCheia();
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const aoMudar = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', aoMudar);
+    return () => window.removeEventListener('hashchange', aoMudar);
+  }, []);
+
+  // link público da cliente: sem login e sem menu
+  if (ehRotaPublica(hash)) return <FormularioPublico />;
 
   return (
     <AuthGate>

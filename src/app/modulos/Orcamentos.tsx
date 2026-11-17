@@ -13,6 +13,7 @@ import { acrescimoTotal, escolhasPadrao, gruposPendentes, linhasDeEscolhas, type
 import { CANAIS, STATUS_ORCAMENTO, orcamentoNovo, totalDoOrcamento, type Orcamento, type StatusOrcamento } from '../../dominio/orcamentos.ts';
 import { dataParaTexto, entradaCentavos, type ItemPedido } from '../../dominio/pedidos.ts';
 import type { InfoMaterial } from '../../dominio/produtos.ts';
+import { LinkPublico, SolicitacoesRecebidas } from '../componentes/LinkPublico.tsx';
 import { PersonalizacaoDoItem } from '../componentes/FormularioItem.tsx';
 import { EditorOpcoes, gruposDoForm, gruposParaForm, type GrupoForm } from '../componentes/EditorOpcoes.tsx';
 import type { Tela } from '../telas.ts';
@@ -49,6 +50,7 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
   const [nomeNovo, setNomeNovo] = useState('');
   const [faltaCliente, setFaltaCliente] = useState(false);
   const [editandoPerguntas, setEditandoPerguntas] = useState(false);
+  const [mostrandoLink, setMostrandoLink] = useState(false);
   const [aberto, setAberto] = useState<Orcamento | null>(null);
   const [msg, setMsg] = useState('');
   const painelRef = useRef<HTMLDivElement | null>(null);
@@ -107,6 +109,7 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
             setAberto({ ...orcamentoNovo(), clienteId: clienteSel && clienteSel !== '__novo' ? clienteSel : null });
           }}>Novo orçamento</button>
           <button className="btn" onClick={() => setEditandoPerguntas(!editandoPerguntas)}>{editandoPerguntas ? 'Fechar perguntas' : 'Editar perguntas do formulário'}</button>
+          <button className="btn" onClick={() => setMostrandoLink(!mostrandoLink)}>{mostrandoLink ? 'Fechar link e QR' : 'Link público e QR code'}</button>
         </div>
         {faltaCliente && !podeNovo
           ? <p className="aviso">Para começar, escolha a cliente na lista acima (ou use “+ Nova cliente…” e escreva o nome). Depois clique em Novo orçamento.</p>
@@ -120,6 +123,9 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
           ))}
         </div>
       </div>
+
+      {mostrandoLink && <LinkPublico />}
+      <SolicitacoesRecebidas aoVirarOrcamento={async (o, aviso) => { setMsg(aviso); setFiltro('aberto'); await recarregar(); setAberto(o); }} />
 
       {aberto && (
         <div ref={painelRef}>
