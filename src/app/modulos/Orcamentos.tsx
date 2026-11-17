@@ -47,6 +47,7 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
   const [filtro, setFiltro] = useState<Filtro>('aberto');
   const [clienteSel, setClienteSel] = useState(''); // cliente escolhida aqui: filtra a lista e vale para o novo orçamento
   const [nomeNovo, setNomeNovo] = useState('');
+  const [faltaCliente, setFaltaCliente] = useState(false);
   const [editandoPerguntas, setEditandoPerguntas] = useState(false);
   const [aberto, setAberto] = useState<Orcamento | null>(null);
   const [msg, setMsg] = useState('');
@@ -92,17 +93,24 @@ export function Orcamentos(p: { ir: (t: Tela) => void }) {
       <div className="cartao">
         <div className="linha" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
           <Campo rotulo="Cliente">
-            <select value={clienteSel} onChange={(e) => setClienteSel(e.target.value)}>
+            <select value={clienteSel} onChange={(e) => { setClienteSel(e.target.value); setFaltaCliente(false); }}>
               <option value="">Todas as clientes</option>
               {clientes.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               <option value="__novo">+ Nova cliente…</option>
             </select>
           </Campo>
           {clienteSel === '__novo' && <Campo rotulo="Nome da nova cliente"><input type="text" value={nomeNovo} onChange={(e) => setNomeNovo(e.target.value)} /></Campo>}
-          <button className="btn primario" disabled={!podeNovo} onClick={() => { setMsg(''); setAberto({ ...orcamentoNovo(), clienteId: clienteSel && clienteSel !== '__novo' ? clienteSel : null }); }}>Novo orçamento</button>
+          <button className="btn primario" onClick={() => {
+            setMsg('');
+            if (!podeNovo) { setFaltaCliente(true); return; }
+            setFaltaCliente(false);
+            setAberto({ ...orcamentoNovo(), clienteId: clienteSel && clienteSel !== '__novo' ? clienteSel : null });
+          }}>Novo orçamento</button>
           <button className="btn" onClick={() => setEditandoPerguntas(!editandoPerguntas)}>{editandoPerguntas ? 'Fechar perguntas' : 'Editar perguntas do formulário'}</button>
         </div>
-        {!podeNovo && <p className="suave" style={PEQUENO}>Escolha a cliente aqui para começar um novo orçamento (ou cadastre uma nova).</p>}
+        {faltaCliente && !podeNovo
+          ? <p className="aviso">Para começar, escolha a cliente na lista acima (ou use “+ Nova cliente…” e escreva o nome). Depois clique em Novo orçamento.</p>
+          : <p className="suave" style={PEQUENO}>A cliente do novo orçamento é escolhida aqui, na lista acima.</p>}
         {msg && <p role="status" className="ok">{msg}</p>}
         <div className="linha" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           {(['aberto', 'aprovado', 'recusado', 'todos'] as Filtro[]).map((f) => (
