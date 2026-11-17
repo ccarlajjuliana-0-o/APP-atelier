@@ -5,7 +5,7 @@
 
 /** Tabelas locais que vão para a nuvem. Escritas e mostruário ficam de fora (o mostruário já tem a sua própria nuvem). */
 export const TABELAS_SINCRONIZADAS = [
-  'materiais', 'movimentacoes', 'fornecedores', 'produtos', 'clientes', 'pedidos', 'despesas', 'ajustes', 'equipamentos', 'publicacoes', 'preferencias', 'temas', 'identidade', 'fontes', 'orcamentos', 'extras', 'formularios',
+  'materiais', 'movimentacoes', 'fornecedores', 'produtos', 'clientes', 'pedidos', 'despesas', 'ajustes', 'equipamentos', 'publicacoes', 'preferencias', 'temas', 'identidade', 'fontes', 'orcamentos', 'extras', 'formularios', 'miolos',
 ] as const;
 export type TabelaSincronizada = (typeof TABELAS_SINCRONIZADAS)[number];
 

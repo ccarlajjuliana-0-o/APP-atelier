@@ -17,6 +17,7 @@ import type { Tela } from './telas.ts';
 import { useMenuRecolhido, useTelaCheia } from './useVisaoDoApp.ts';
 import { Logo } from './componentes/Logo.tsx';
 import { Mostruario } from './modulos/Mostruario.tsx';
+import { EditorMiolos } from './modulos/EditorMiolos.tsx';
 import { Backup } from './modulos/Backup.tsx';
 import { sair, nuvem } from '../dados/nuvem.ts';
 import { iniciarSincronizacaoAutomatica } from '../dados/sync.ts';
@@ -37,6 +38,7 @@ const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'financeiro', nome: 'Financeiro' },
   { id: 'equipamentos', nome: 'Equipamentos' },
   { id: 'divulgacao', nome: 'Divulgação' },
+  { id: 'miolos', nome: 'Editor de miolos' },
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'nuvem', nome: 'Nuvem' },
@@ -134,6 +136,7 @@ export function App() {
             {tela === 'financeiro' && <Financeiro />}
             {tela === 'equipamentos' && <Equipamentos />}
             {tela === 'divulgacao' && <Divulgacao />}
+            {tela === 'miolos' && <EditorMiolos />}
             {tela === 'mostruario' && <Mostruario />}
             {tela === 'backup' && <Backup />}
             {tela === 'nuvem' && <Nuvem />}

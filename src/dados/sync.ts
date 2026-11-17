@@ -203,6 +203,8 @@ function registrarGanchos() {
   db.extras.hook('updating', marcar);
   db.formularios.hook('creating', marcar);
   db.formularios.hook('updating', marcar);
+  db.miolos.hook('creating', marcar);
+  db.miolos.hook('updating', marcar);
 }
 
 /** Liga a sincronização automática: ao abrir, a cada poucos minutos, ao voltar a internet, ao voltar para a aba e ~15 s depois de cada alteração. */

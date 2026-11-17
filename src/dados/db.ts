@@ -7,6 +7,7 @@ import type { ExtraCatalogo } from '../dominio/extras.ts';
 import type { Orcamento } from '../dominio/orcamentos.ts';
 import type { ItemPedido, Pagamento, Reserva, StatusPedido } from '../dominio/pedidos.ts';
 import type { Devolucao } from '../dominio/devolucoes.ts';
+import type { ConfigMiolo } from '../dominio/miolo.ts';
 import type { TipoPedido } from '../dominio/prazo.ts';
 import type { Ajustes, Despesa } from '../dominio/financeiro.ts';
 import type { Equipamento } from '../dominio/equipamentos.ts';
@@ -140,6 +141,16 @@ export interface Pedido {
   atualizadoEm: string;
 }
 
+/** Miolo criado no editor: guarda só as escolhas; as páginas são geradas na hora. */
+export interface MioloRegistro {
+  id: string;
+  nome: string;
+  config: ConfigMiolo;
+  folhasPorCaderno: number; // 0 = um caderno só
+  arquivado?: boolean;
+  atualizadoEm: string;
+}
+
 /** Perguntas do orçamento personalizado (um registro só, id 'orcamento'). */
 export interface FormularioRegistro {
   id: string;
@@ -180,6 +191,7 @@ class BancoAtelie extends Dexie {
   orcamentos!: Table<Orcamento, string>;
   extras!: Table<ExtraCatalogo, string>;
   formularios!: Table<FormularioRegistro, string>;
+  miolos!: Table<MioloRegistro, string>;
 
   constructor() {
     super('craft-notes-atelie');
@@ -202,6 +214,7 @@ class BancoAtelie extends Dexie {
     // As fontes passam a ir para a nuvem: as que já existem neste aparelho são marcadas como alteradas agora, para serem enviadas.
     this.version(12).stores({}).upgrade((tx) => tx.table('fontes').toCollection().modify((f) => { f.atualizadoEm = new Date().toISOString(); }));
     this.version(13).stores({ orcamentos: 'id, numero, status, clienteId', extras: 'id', formularios: 'id' });
+    this.version(14).stores({ miolos: 'id, nome' });
   }
 }
 
