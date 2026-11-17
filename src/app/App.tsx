@@ -38,7 +38,7 @@ const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'financeiro', nome: 'Financeiro' },
   { id: 'equipamentos', nome: 'Equipamentos' },
   { id: 'divulgacao', nome: 'Divulgação' },
-  { id: 'miolos', nome: 'Editor de miolos' },
+  { id: 'miolos', nome: 'Miolos' },
   { id: 'mostruario', nome: 'Mostruário' },
   { id: 'backup', nome: 'Backup' },
   { id: 'nuvem', nome: 'Nuvem' },

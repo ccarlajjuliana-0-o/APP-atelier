@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { db, novoId, type MostruarioRegistro } from '../../dados/db.ts';
-import { importarPacote } from '../../dados/mostruario.ts';
+import { buscarDoEditor, importarPacote } from '../../dados/mostruario.ts';
 import { filtrar } from '../../dominio/mostruario.ts';
 
 const TAMANHOS = ['A4', 'A5', 'A6', 'Colegial'];
@@ -24,7 +24,18 @@ export function Mostruario() {
   }
   useEffect(() => {
     void recarregar();
+    // Traz o que o Estúdio de Miolos enviou à nuvem (se estiver conectada).
+    void buscarDoEditor().then((r) => { if (r.novos || r.atualizados) { setMsg(`Do Estúdio de Miolos: ${r.novos} novo${r.novos === 1 ? '' : 's'}, ${r.atualizados} atualizado${r.atualizados === 1 ? '' : 's'}.`); return recarregar(); } }).catch(() => {});
   }, []);
+
+  async function atualizarDoEditor() {
+    setErro(''); setMsg('Buscando…');
+    try {
+      const r = await buscarDoEditor();
+      setMsg(r.novos || r.atualizados ? `Do Estúdio de Miolos: ${r.novos} novo${r.novos === 1 ? '' : 's'}, ${r.atualizados} atualizado${r.atualizados === 1 ? '' : 's'}.` : 'Tudo em dia: nada novo no Estúdio de Miolos.');
+      await recarregar();
+    } catch (x) { setMsg(''); setErro(x instanceof Error ? x.message : 'Não consegui buscar agora.'); }
+  }
 
   async function aoEscolher(e: ChangeEvent<HTMLInputElement>) {
     setErro('');
@@ -69,7 +80,7 @@ export function Mostruario() {
   return (
     <>
       <h1>Mostruário</h1>
-      <p className="suave">Miolos, capas e adesivos para a cliente escolher. Miolos e adesivos vêm do Estúdio de Miolos (baixe o pacote lá e importe aqui); as capas você pode adicionar daqui mesmo, pela imagem.</p>
+      <p className="suave">Miolos, capas e adesivos para a cliente escolher. Miolos e adesivos chegam sozinhos do Estúdio de Miolos (use “Buscar do Estúdio de Miolos” se quiser conferir agora); as capas você pode adicionar daqui mesmo, pela imagem.</p>
       <div className="faixa" />
       <div className="cartao">
         <div className="linha">
@@ -77,6 +88,7 @@ export function Mostruario() {
             Importar pacote (.json)
             <input type="file" accept=".json,application/json" hidden onChange={(e) => void aoEscolher(e)} />
           </label>
+          <button className="btn" onClick={() => void atualizarDoEditor()}>Buscar do Estúdio de Miolos</button>
           <button className="pilula" aria-pressed={aba === 'modelo'} onClick={() => setAba('modelo')}>Miolos</button>
           <button className="pilula" aria-pressed={aba === 'capa'} onClick={() => setAba('capa')}>Capas</button>
           <button className="pilula" aria-pressed={aba === 'adesivo'} onClick={() => setAba('adesivo')}>Adesivos</button>

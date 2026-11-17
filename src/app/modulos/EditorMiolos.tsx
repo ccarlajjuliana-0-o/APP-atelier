@@ -48,7 +48,7 @@ async function pngDaPagina(svg: string, largura: number, larguraMm: number, altu
   return new Promise((ok, falha) => c.toBlob((b) => (b ? ok(b) : falha(new Error('Não consegui gerar a miniatura.'))), 'image/png'));
 }
 
-export function EditorMiolos() {
+function GeradorRapido() {
   const [lista, setLista] = useState<MioloRegistro[]>([]);
   const [atual, setAtual] = useState<MioloRegistro>(() => {
     const m = novoMiolo();
@@ -169,7 +169,6 @@ export function EditorMiolos() {
 
   return (
     <>
-      <h1>Editor de miolos</h1>
       <p className="suave">Crie o miolo do seu caderno ou planner: escolha o modelo, o tamanho e as páginas, veja na tela e baixe o PDF pronto para imprimir (inclusive em livreto, com as páginas já na ordem certa). Depois é só enviar ao Mostruário para as clientes escolherem. 📖</p>
       <div className="faixa" />
 
@@ -308,6 +307,27 @@ export function EditorMiolos() {
         {msg && <p className="ok">{msg}</p>}
         {erro && <p className="aviso">{erro}</p>}
       </div>
+    </>
+  );
+}
+
+const URL_ESTUDIO = `${window.location.origin}/editor-miolos/`;
+
+export function EditorMiolos() {
+  return (
+    <>
+      <h1>Miolos</h1>
+      <div className="cartao">
+        <h2>Estúdio de Miolos</h2>
+        <p className="suave">O editor completo fica em um app só dele: modelos de planner e caderno, bordas, adesivos, widgets, régua e grade, PDF pronto para imprimir e em cadernos. O que você marcar para o mostruário chega aqui sozinho. 🌸</p>
+        <div className="linha" style={{ flexWrap: 'wrap', gap: 8 }}>
+          <a className="btn primario" href={URL_ESTUDIO} target="_blank" rel="noopener noreferrer">Abrir o Estúdio de Miolos ↗</a>
+        </div>
+      </div>
+      <details className="cartao">
+        <summary><strong>Gerador rápido</strong> <span className="suave">(miolo simples em poucos cliques, sem abrir o estúdio)</span></summary>
+        <GeradorRapido />
+      </details>
     </>
   );
 }

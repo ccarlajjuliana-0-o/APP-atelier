@@ -40,3 +40,33 @@ export async function importarPacote(arquivo: File): Promise<{ total: number; nu
   }
   return { total: registros.length, nuvem: naNuvem };
 }
+
+/** Traz para o aparelho os modelos e adesivos que o Estúdio de Miolos enviou à nuvem (e esconde os que ele escondeu). */
+export async function buscarDoEditor(): Promise<{ novos: number; atualizados: number }> {
+  const r = { novos: 0, atualizados: 0 };
+  if (!nuvem) return r;
+  const sessao = await nuvem.auth.getSession();
+  if (!sessao.data.session) return r;
+  const { data, error } = await nuvem.from('mostruario_itens').select('*');
+  if (error) throw error;
+  for (const row of data ?? []) {
+    if (row.tipo !== 'modelo' && row.tipo !== 'adesivo') continue;
+    const local = await db.mostruario.get(row.id);
+    const nuvemEm = String(row.atualizado_em ?? '');
+    if (local && local.atualizadoEm >= nuvemEm && local.visivel === !!row.visivel) continue;
+    if (!row.visivel) {
+      if (local) { await db.mostruario.update(row.id, { visivel: false, atualizadoEm: nuvemEm || local.atualizadoEm }); r.atualizados++; }
+      continue;
+    }
+    if (local && local.atualizadoEm >= nuvemEm) { await db.mostruario.update(row.id, { visivel: true }); r.atualizados++; continue; }
+    const baixa = await nuvem.storage.from('mostruario').download(row.preview_path);
+    if (baixa.error || !baixa.data) continue;
+    await db.mostruario.put({
+      id: row.id, tipo: row.tipo, manual: true, nome: row.nome, categoria: row.categoria ?? '', descricao: row.descricao ?? '',
+      tamanhos: row.tamanhos ?? [], tamanhoBase: row.tamanho_base ?? null, ordem: row.ordem ?? 0, visivel: true,
+      previa: baixa.data, atualizadoEm: nuvemEm || new Date().toISOString(),
+    });
+    if (local) r.atualizados++; else r.novos++;
+  }
+  return r;
+}
