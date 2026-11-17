@@ -1,6 +1,6 @@
 import { db, novoId, type Cliente, type Pedido, type MovimentacaoRegistro } from './db.ts';
 import { saldoDisponivel } from '../dominio/estoque.ts';
-import { dataPrometida, necessidades, totalCentavos, type Pagamento, type StatusPedido } from '../dominio/pedidos.ts';
+import { ajustarReservas, dataPrometida, itensAtivos, necessidades, totalCentavos, type Pagamento, type StatusPedido } from '../dominio/pedidos.ts';
 import { MIN_DIAS_COM_BAIXA, diasComBaixa, diasRestantes, ritmoPorDia } from '../dominio/consumo.ts';
 
 /** Data de hoje no fuso do aparelho, no formato AAAA-MM-DD. */
@@ -153,6 +153,53 @@ export async function cancelarPedido(id: string): Promise<void> {
     }
     await db.pedidos.put({ ...p, status: 'cancelado' as StatusPedido, reservas: [], atualizadoEm: agora });
   });
+}
+
+/**
+ * Cancelamento parcial: os itens marcados continuam listados como cancelados, o total diminui e o material
+ * reservado a mais é liberado. Se todos os itens ativos forem marcados, o pedido inteiro é cancelado.
+ * Devolve o pedido e quanto já foi pago além do novo total (para devolver ou abater).
+ */
+export async function cancelarItens(id: string, indices: number[]): Promise<{ pedido: Pedido; pagoAMaisCentavos: number; inteiro: boolean }> {
+  const antes = await db.pedidos.get(id);
+  if (!antes) throw new Error('Pedido não encontrado.');
+  const ativos = antes.itens.map((i, k) => ({ i, k })).filter((x) => !x.i.cancelado);
+  const alvo = new Set(indices.filter((k) => ativos.some((a) => a.k === k)));
+  if (alvo.size === 0) throw new Error('Escolha ao menos um item para cancelar.');
+  if (alvo.size === ativos.length) {
+    await cancelarPedido(id);
+    return { pedido: (await db.pedidos.get(id))!, pagoAMaisCentavos: Math.max(0, pagoDoPedido(antes)), inteiro: true };
+  }
+  return db.transaction('rw', [db.pedidos, db.movimentacoes, db.produtos], async () => {
+    const p = await db.pedidos.get(id);
+    if (!p) throw new Error('Pedido não encontrado.');
+    if (p.status === 'pronto' || p.status === 'entregue' || p.status === 'cancelado') throw new Error('Este pedido já não pode ser alterado aqui.');
+    const agora = new Date().toISOString();
+    const itens = p.itens.map((i, k) => (alvo.has(k) ? { ...i, cancelado: true } : i));
+    let reservas = p.reservas;
+    if (p.status !== 'orcamento' && p.reservas.length) {
+      const ids = [...new Set(itens.map((i) => i.produtoId).filter((x): x is string => !!x))];
+      const produtos = await db.produtos.bulkGet(ids);
+      const receitas = Object.fromEntries(produtos.filter((x) => !!x).map((x) => [x!.id, x!.receita]));
+      const disp = Object.fromEntries(Object.entries(agrupar(await db.movimentacoes.toArray())).map(([mid, l]) => [mid, saldoDisponivel(l)]));
+      const aj = ajustarReservas(itensAtivos(itens), receitas, p.reservas, disp);
+      for (const l of aj.liberar) {
+        await db.movimentacoes.add({ id: novoId(), materialId: l.materialId, tipo: 'liberacao', quantidade: l.quantidade, criadoEm: agora, observacao: `Cancelamento parcial do pedido #${p.numero}` });
+      }
+      reservas = aj.reservas;
+    }
+    const nomes = [...alvo].map((k) => p.itens[k].descricao).join(', ');
+    const novoTotal = totalCentavos(itens);
+    const pagoAMais = Math.max(0, pagoDoPedido(p) - novoTotal);
+    const nota = `Cancelamento parcial em ${hojeLocal().split('-').reverse().join('/')}: ${nomes}.${pagoAMais > 0 ? ` Já pago a mais: ${(pagoAMais / 100).toFixed(2).replace('.', ',')} (devolver ou abater).` : ''}`;
+    const novo: Pedido = { ...p, itens, reservas, observacoes: [p.observacoes, nota].filter(Boolean).join(' '), atualizadoEm: agora };
+    await db.pedidos.put(novo);
+    return { pedido: novo, pagoAMaisCentavos: pagoAMais, inteiro: false };
+  });
+}
+
+function pagoDoPedido(p: Pedido): number {
+  return p.pagamentos.reduce((s, x) => s + x.valorCentavos, 0);
 }
 
 export async function registrarPagamento(id: string, pagamento: Pagamento): Promise<Pedido> {

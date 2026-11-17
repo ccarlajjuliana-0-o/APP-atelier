@@ -44,6 +44,7 @@ export interface ItemPedido {
   escolhas?: EscolhaItem[]; // opções do formulário personalizado
   precoBaseCentavos?: number; // preço sem as opções (precoUnit = base + opções)
   personalizado?: boolean; // montado pelo formulário (sem produto do catálogo)
+  cancelado?: boolean; // cancelamento parcial: continua listado, mas não conta no total nem no material
 }
 
 export interface Pagamento {
@@ -57,8 +58,12 @@ export interface Reserva {
   quantidade: number;
 }
 
+export function itensAtivos(itens: ItemPedido[]): ItemPedido[] {
+  return itens.filter((i) => !i.cancelado);
+}
+
 export function totalCentavos(itens: ItemPedido[]): number {
-  return itens.reduce((s, i) => s + Math.round(Math.max(0, i.quantidade) * Math.max(0, i.precoUnitCentavos)), 0);
+  return itensAtivos(itens).reduce((s, i) => s + Math.round(Math.max(0, i.quantidade) * Math.max(0, i.precoUnitCentavos)), 0);
 }
 
 export function entradaCentavos(total: number, pct = ENTRADA_PCT): number {
@@ -124,7 +129,7 @@ export function necessidades(
 ): Necessidade[] {
   const essencial: Record<string, number> = {};
   const extra: Record<string, number> = {};
-  for (const it of itens) {
+  for (const it of itensAtivos(itens)) {
     if (!(it.quantidade > 0)) continue;
     for (const r of (it.produtoId ? receitas[it.produtoId] : undefined) ?? []) {
       const q = qtdEfetiva(r) * it.quantidade;
@@ -154,4 +159,28 @@ export function necessidades(
     });
   }
   return out.filter((n) => n.necessario > 0).sort((a, b) => a.materialId.localeCompare(b.materialId));
+}
+
+/**
+ * Cancelamento parcial: depois de marcar itens como cancelados, o material reservado se ajusta ao que os itens restantes pedem.
+ * `disponivelAgora` é o saldo disponível (já descontadas as reservas atuais). Devolve as novas reservas e o que deve ser liberado.
+ */
+export function ajustarReservas(
+  itensRestantes: ItemPedido[],
+  receitas: Record<string, ItemProduto[]>,
+  reservasAtuais: Reserva[],
+  disponivelAgora: Record<string, number>,
+): { reservas: Reserva[]; liberar: Reserva[] } {
+  const antes: Record<string, number> = {};
+  for (const r of reservasAtuais) antes[r.materialId] = (antes[r.materialId] ?? 0) + r.quantidade;
+  // o que estaria disponível se este pedido ainda não tivesse reservado nada
+  const livre: Record<string, number> = { ...disponivelAgora };
+  for (const [id, q] of Object.entries(antes)) livre[id] = (livre[id] ?? 0) + q;
+  const novas = necessidades(itensRestantes, receitas, livre).filter((n) => n.reservar > 0);
+  const reservas = novas.map((n) => ({ materialId: n.materialId, quantidade: Math.min(n.reservar, antes[n.materialId] ?? n.reservar) }));
+  const por: Record<string, number> = Object.fromEntries(reservas.map((r) => [r.materialId, r.quantidade]));
+  const liberar = Object.entries(antes)
+    .map(([materialId, q]) => ({ materialId, quantidade: q - (por[materialId] ?? 0) }))
+    .filter((l) => l.quantidade > 0);
+  return { reservas, liberar };
 }

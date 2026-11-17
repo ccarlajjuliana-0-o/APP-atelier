@@ -3,7 +3,7 @@ import { db, type Cliente, type Material, type MostruarioRegistro, type Pedido, 
 import { listarMateriais } from '../../dados/materiais.ts';
 import { listarProdutos } from '../../dados/produtos.ts';
 import {
-  avancarPedido, cancelarPedido, disponiveis, hojeLocal, listarClientes, listarPedidos, pedidoNovo,
+  avancarPedido, cancelarItens, cancelarPedido, disponiveis, hojeLocal, listarClientes, listarPedidos, pedidoNovo,
   registrarPagamento, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
 import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
@@ -213,6 +213,8 @@ function Detalhe(p: {
   );
   const [erro, setErro] = useState('');
   const [cancelando, setCancelando] = useState(false);
+  const [parcial, setParcial] = useState(false);
+  const [marcados, setMarcados] = useState<number[]>([]);
   const [confirmaEntrega, setConfirmaEntrega] = useState(false);
   const [valorPag, setValorPag] = useState('');
   const [obsPag, setObsPag] = useState('');
@@ -345,6 +347,19 @@ function Detalhe(p: {
     }
   }
 
+  async function aoCancelarItens() {
+    setErro('');
+    try {
+      const r = await cancelarItens(ini.id, marcados);
+      const aMais = r.pagoAMaisCentavos > 0 ? ` Já foi pago ${centavosParaTexto(r.pagoAMaisCentavos)} a mais: devolva ou abata (ficou anotado nas observações).` : '';
+      await p.aoMudar(r.inteiro
+        ? `Pedido #${ini.numero} cancelado por inteiro. O material reservado foi liberado.${aMais}`
+        : `${marcados.length === 1 ? 'Item cancelado' : 'Itens cancelados'} no pedido #${ini.numero}. O total e o material reservado foram ajustados.${aMais}`, r.inteiro ? null : r.pedido);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui cancelar.');
+    }
+  }
+
   async function aoPagar() {
     const v = lerNumero(valorPag || reais(Math.max(0, (pago < entrada ? entrada : total) - pago)));
     if (Number.isNaN(v) || v <= 0) return setErro('Informe o valor recebido.');
@@ -448,9 +463,9 @@ function Detalhe(p: {
             <thead><tr><th>Item</th><th>Qtd</th><th>Preço</th><th>Subtotal</th></tr></thead>
             <tbody>
               {ini.itens.map((i, k) => (
-                <tr key={k}>
+                <tr key={k} style={i.cancelado ? { opacity: 0.55, textDecoration: 'line-through' } : undefined}>
                   <td>
-                    <strong>{i.descricao}</strong>
+                    <strong>{i.descricao}</strong>{i.cancelado && <span className="etiqueta" style={{ marginLeft: 6, textDecoration: 'none', display: 'inline-block' }}>cancelado</span>}
                     {(i.modeloNome || i.adesivoNome) && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{[i.modeloNome && `modelo: ${i.modeloNome}`, i.adesivoNome && `adesivos: ${i.adesivoNome}`].filter(Boolean).join(' · ')}</div>}
                     {i.escolhas && linhasDeEscolhas(i.escolhas).map((l, n) => <div key={n} className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{l}</div>)}
                     {i.observacao && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{i.observacao}</div>}
@@ -562,18 +577,41 @@ function Detalhe(p: {
           </button>
         )}
         <button className="btn" onClick={p.fechar}>Fechar</button>
-        {ini.id && podeCancelar(ini.status) && (
-          cancelando ? (
-            <span className="linha" style={{ marginLeft: 'auto' }}>
-              <span className="suave">Cancelar este pedido?</span>
-              <button className="btn" onClick={() => void aoCancelar()}>Sim, cancelar</button>
-              <button className="btn" onClick={() => setCancelando(false)}>Não</button>
-            </span>
-          ) : (
-            <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setCancelando(true)}>Cancelar pedido</button>
-          )
+        {ini.id && podeCancelar(ini.status) && !cancelando && (
+          <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => { setCancelando(true); setParcial(false); setMarcados([]); }}>Cancelar…</button>
         )}
       </div>
+      {ini.id && podeCancelar(ini.status) && cancelando && (
+        <div className="cartao" style={{ background: 'var(--neutro)', marginTop: 12 }}>
+          <strong>Cancelar</strong>
+          {ini.status !== 'orcamento' && ini.itens.filter((i) => !i.cancelado).length > 1 && (
+            <div className="linha" style={{ gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
+              <label className="linha"><input type="radio" name="tipo-cancel" checked={!parcial} onChange={() => setParcial(false)} /> O pedido inteiro</label>
+              <label className="linha"><input type="radio" name="tipo-cancel" checked={parcial} onChange={() => setParcial(true)} /> Só alguns itens</label>
+            </div>
+          )}
+          {parcial ? (
+            <div style={{ marginTop: 6 }}>
+              <span className="suave">Marque o que será cancelado (o restante do pedido segue):</span>
+              {ini.itens.map((i, k) => (i.cancelado ? null : (
+                <label key={k} className="linha" style={{ gap: 6 }}>
+                  <input type="checkbox" checked={marcados.includes(k)} onChange={(e) => setMarcados(e.target.checked ? [...marcados, k] : marcados.filter((x) => x !== k))} />
+                  {i.quantidade}× {i.descricao} — {centavosParaTexto(Math.round(i.quantidade * i.precoUnitCentavos))}
+                </label>
+              )))}
+              <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>O total diminui e o material reservado desses itens volta para o estoque. Se já houver pagamento acima do novo total, o app avisa.</p>
+            </div>
+          ) : (
+            <p className="suave" style={{ marginTop: 6 }}>Cancelar o pedido inteiro libera todo o material reservado.</p>
+          )}
+          <div className="linha" style={{ marginTop: 8 }}>
+            {parcial
+              ? <button className="btn primario" disabled={marcados.length === 0} onClick={() => void aoCancelarItens()}>Cancelar {marcados.length === 1 ? 'o item' : 'os itens'} marcado{marcados.length === 1 ? '' : 's'}</button>
+              : <button className="btn primario" onClick={() => void aoCancelar()}>Sim, cancelar o pedido inteiro</button>}
+            <button className="btn" onClick={() => setCancelando(false)}>Voltar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

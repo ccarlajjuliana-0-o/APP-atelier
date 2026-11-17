@@ -105,3 +105,18 @@ test('previsão de duração só com histórico suficiente', () => {
   assert.equal(diasComBaixa([b('2026-11-01'), b('2026-11-01')]), 1);
   assert.equal(diasComBaixa([b('2026-11-01'), b('2026-11-05'), b('2026-11-09')]), 3);
 });
+
+import { ajustarReservas, itensAtivos } from './pedidos.ts';
+test('cancelamento parcial: total, necessidades e reservas acompanham os itens restantes', () => {
+  const rec: Record<string, ItemProduto[]> = { a: [{ materialId: 'papel', quantidade: 10, desperdicioPct: 0, extra: false }], b: [{ materialId: 'capa', quantidade: 1, desperdicioPct: 0, extra: false }] };
+  const itens = [item({ produtoId: 'a', quantidade: 2, precoUnitCentavos: 1000 }), item({ produtoId: 'b', quantidade: 3, precoUnitCentavos: 500 })];
+  assert.equal(totalCentavos(itens), 3500);
+  const cancelado = [itens[0], { ...itens[1], cancelado: true }];
+  assert.equal(totalCentavos(cancelado), 2000);
+  assert.equal(itensAtivos(cancelado).length, 1);
+  assert.deepEqual(necessidades(cancelado, rec, { papel: 100, capa: 100 }).map((n) => [n.materialId, n.necessario]), [['papel', 20]]);
+  // já reservado: papel 20 e capa 3; sobrando no estoque (disponível agora) papel 5 e capa 0
+  const aj = ajustarReservas(cancelado, rec, [{ materialId: 'papel', quantidade: 20 }, { materialId: 'capa', quantidade: 3 }], { papel: 5, capa: 0 });
+  assert.deepEqual(aj.reservas, [{ materialId: 'papel', quantidade: 20 }]);
+  assert.deepEqual(aj.liberar, [{ materialId: 'capa', quantidade: 3 }]);
+});

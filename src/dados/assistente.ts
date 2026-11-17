@@ -9,7 +9,7 @@ import { hojeLocal } from './pedidos.ts';
 import { listarPublicacoes } from './divulgacao.ts';
 import { comMaquinasDosEquipamentos } from '../dominio/equipamentos.ts';
 import { fluxoDoMes, mesDe, precificar, totalFixasCentavos } from '../dominio/financeiro.ts';
-import { ABERTOS, STATUS, atrasado, pagoCentavos, totalCentavos } from '../dominio/pedidos.ts';
+import { ABERTOS, STATUS, atrasado, itensAtivos, pagoCentavos, totalCentavos } from '../dominio/pedidos.ts';
 import { LINHAS } from '../dominio/produtos.ts';
 import { CANAIS, STATUS_POST } from '../dominio/divulgacao.ts';
 import { limitarMensagens, montarContexto, primeiroNome, type Mensagem, type SnapshotAssistente } from '../dominio/assistente.ts';
@@ -48,7 +48,7 @@ export async function montarSnapshot(): Promise<SnapshotAssistente> {
     pedidos: pedidos.filter((p) => ABERTOS.includes(p.status)).sort((a, b) => a.numero - b.numero).map((p) => ({
       numero: p.numero, cliente: nomeCliente.get(p.clienteId ?? '') ?? 'sem cliente', status: STATUS[p.status], totalCentavos: totalCentavos(p.itens),
       pagoCentavos: pagoCentavos(p.pagamentos), dataPrometida: p.dataPrometida, atrasado: atrasado(p.status, p.dataPrometida, hoje),
-      itens: p.itens.map((i) => `${i.quantidade}× ${i.descricao}`).join(', '),
+      itens: itensAtivos(p.itens).map((i) => `${i.quantidade}× ${i.descricao}`).join(', '),
     })),
     caixaMes: { mes, entrou: fluxo.entradas, saiu: fluxo.saidas, fixas: totalFixasCentavos(despesas) },
     ajustes: { multiplicadorEncadernacao: ajustes.multiplicadorEncadernacao, multiplicador3d: ajustes.multiplicador3d, kwhCentavos: ajustes.kwhCentavos },

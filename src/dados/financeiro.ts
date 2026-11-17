@@ -1,7 +1,7 @@
 import { db, novoId } from './db.ts';
 import { completarAjustes, type Ajustes, type CompraCaixa, type Despesa, type PagamentoCaixa } from '../dominio/financeiro.ts';
 import { resumoProduto, type InfoMaterial } from '../dominio/produtos.ts';
-import { totalCentavos } from '../dominio/pedidos.ts';
+import { itensAtivos, totalCentavos } from '../dominio/pedidos.ts';
 
 export async function carregarAjustes(): Promise<Ajustes> {
   return completarAjustes(await db.ajustes.get('financeiro'));
@@ -75,7 +75,7 @@ export async function historicoDePedidos(): Promise<HistoricoPedidos> {
   let material = 0;
   for (const p of validos) {
     total += totalCentavos(p.itens);
-    for (const i of p.itens) if (i.produtoId) material += (custos[i.produtoId]?.materiais ?? 0) * i.quantidade;
+    for (const i of itensAtivos(p.itens)) if (i.produtoId) material += (custos[i.produtoId]?.materiais ?? 0) * i.quantidade;
   }
   return { pedidos: validos.length, ticketMedio: Math.round(total / validos.length), materialMedio: Math.round(material / validos.length) };
 }
