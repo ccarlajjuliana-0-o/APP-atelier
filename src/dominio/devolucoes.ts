@@ -116,3 +116,12 @@ export function pecaNova(indice: number, descricao: string, quantidade: number, 
 export function pecasPendentes(devolucoes: Devolucao[] | undefined): number {
   return (devolucoes ?? []).reduce((s, d) => s + d.pecas.filter((p) => p.situacao === 'a_caminho' || p.situacao === 'em_conserto').length, 0);
 }
+
+/** Pedido que teve devolução com reembolso: total (nada ficou com a cliente) ou parcial, com a data do último reembolso. */
+export function reembolsoDoPedido(p: { itens: { cancelado?: boolean; devolvido?: boolean }[]; devolucoes?: Devolucao[] }): { tipo: 'total' | 'parcial'; data: string } | null {
+  const rs = (p.devolucoes ?? []).filter((d) => d.solucao === 'reembolso');
+  if (rs.length === 0) return null;
+  const data = rs.map((d) => d.solicitadaEm).sort().slice(-1)[0];
+  const restam = p.itens.some((i) => !i.cancelado && !i.devolvido);
+  return { tipo: restam ? 'parcial' : 'total', data };
+}

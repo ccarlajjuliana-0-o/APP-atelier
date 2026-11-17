@@ -7,6 +7,7 @@ import {
   registrarPagamento, reembolsarPedido, repetirPedido, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
 import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
+import { reembolsoDoPedido } from '../../dominio/devolucoes.ts';
 import { DevolucaoDoPedido } from '../componentes/DevolucaoPedido.tsx';
 import { PersonalizacaoDoItem } from '../componentes/FormularioItem.tsx';
 import { listarExtras } from '../../dados/extras.ts';
@@ -21,7 +22,7 @@ import {
 import type { TipoPedido } from '../../dominio/prazo.ts';
 import { resumoProduto, type InfoMaterial } from '../../dominio/produtos.ts';
 
-type Filtro = 'abertos' | 'todos' | StatusPedido;
+type Filtro = 'abertos' | 'todos' | 'reembolso' | StatusPedido;
 
 function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
@@ -70,8 +71,9 @@ export function Pedidos() {
   }, [aberto?.id, aberto === null]);
 
   const nomeCliente = (id: string | null) => clientes.find((c) => c.id === id)?.nome ?? '—';
-  const visiveis = pedidos.filter((p) => (filtro === 'todos' ? true : filtro === 'abertos' ? ABERTOS.includes(p.status) : p.status === filtro));
-  const contagem = (s: StatusPedido) => pedidos.filter((p) => p.status === s).length;
+  const emReembolso = (p: Pedido) => !!reembolsoDoPedido(p);
+  const visiveis = pedidos.filter((p) => (filtro === 'todos' ? true : filtro === 'reembolso' ? emReembolso(p) : filtro === 'abertos' ? ABERTOS.includes(p.status) : p.status === filtro && !(p.status === 'entregue' && emReembolso(p))));
+  const contagem = (s: StatusPedido) => pedidos.filter((p) => p.status === s && !(s === 'entregue' && emReembolso(p))).length;
 
   const info = useMemo(() => {
     const out: Record<string, InfoMaterial> = {};
@@ -97,6 +99,7 @@ export function Pedidos() {
           {(['orcamento', 'confirmado', 'em_producao', 'pronto', 'entregue', 'cancelado'] as StatusPedido[]).map((s) => (
             <button key={s} className="pilula" aria-pressed={filtro === s} onClick={() => setFiltro(s)}>{STATUS[s]} ({contagem(s)})</button>
           ))}
+          <button className="pilula" aria-pressed={filtro === 'reembolso'} onClick={() => setFiltro('reembolso')}>Reembolso ({pedidos.filter(emReembolso).length})</button>
           <button className="pilula" aria-pressed={filtro === 'todos'} onClick={() => setFiltro('todos')}>Todos</button>
         </div>
       </div>
@@ -140,7 +143,14 @@ export function Pedidos() {
                   <tr key={p.id}>
                     <td>
                       <strong>#{p.numero}</strong>
-                      <div><span className="etiqueta">{STATUS[p.status]}</span></div>
+                      <div>
+                        {(() => {
+                          const rb = reembolsoDoPedido(p);
+                          return rb
+                            ? <span className="etiqueta">Reembolso {rb.tipo} · {dataParaTexto(rb.data)}</span>
+                            : <span className="etiqueta">{STATUS[p.status]}</span>;
+                        })()}
+                      </div>
                     </td>
                     <td>{nomeCliente(p.clienteId)}<div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>{TIPOS[p.tipo]}</div></td>
                     <td>
@@ -153,7 +163,7 @@ export function Pedidos() {
                       {atraso && <div style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 700 }}>atrasado</div>}
                     </td>
                     <td>
-                      {p.status === 'cancelado' ? '—' : TEXTO_PAGAMENTO[situacaoPagamento(total, p.pagamentos)]}
+                      {p.status === 'cancelado' ? '—' : reembolsoDoPedido(p) && total === 0 ? 'reembolsado' : TEXTO_PAGAMENTO[situacaoPagamento(total, p.pagamentos)]}
                       {(p.status === 'pronto' || p.status === 'entregue') && pagoCentavos(p.pagamentos) < total && (
                         <div style={{ fontSize: 'calc(12px * var(--escala, 1))', fontWeight: 700 }}>falta receber {centavosParaTexto(total - pagoCentavos(p.pagamentos))}</div>
                       )}

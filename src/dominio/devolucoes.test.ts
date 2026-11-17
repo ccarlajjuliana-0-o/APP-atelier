@@ -38,3 +38,12 @@ test('valor das peças e pendências', () => {
   assert.equal(pecasPendentes([{ pecas: [a, b] } as never]), 1);
   assert.equal(pecasPendentes(undefined), 0);
 });
+
+import { reembolsoDoPedido } from './devolucoes.ts';
+test('pedido com reembolso: total ou parcial e data', () => {
+  const dev = (solucao: 'reembolso' | 'novo_pedido', solicitadaEm: string) => ({ solucao, solicitadaEm }) as never;
+  assert.equal(reembolsoDoPedido({ itens: [{}], devolucoes: [] }), null);
+  assert.equal(reembolsoDoPedido({ itens: [{ devolvido: true }], devolucoes: [dev('novo_pedido', '2026-11-16')] }), null);
+  assert.deepEqual(reembolsoDoPedido({ itens: [{ devolvido: true }], devolucoes: [dev('reembolso', '2026-11-16')] }), { tipo: 'total', data: '2026-11-16' });
+  assert.deepEqual(reembolsoDoPedido({ itens: [{ devolvido: true }, {}], devolucoes: [dev('reembolso', '2026-11-14'), dev('reembolso', '2026-11-16')] }), { tipo: 'parcial', data: '2026-11-16' });
+});
