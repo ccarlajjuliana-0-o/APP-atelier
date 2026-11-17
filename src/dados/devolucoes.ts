@@ -2,7 +2,7 @@ import { db, novoId, type Pedido } from './db.ts';
 import { avancarPedido, hojeLocal, pedidoNovo, salvarPedido } from './pedidos.ts';
 import { pagoCentavos } from '../dominio/pedidos.ts';
 import {
-  dentroDoPrazo, impedimentoDevolucao, pecaNova, type Devolucao, type MeioDevolucao, type MotivoDevolucao, type SolucaoDevolucao,
+  dentroDoPrazo, impedimentoDevolucao, pecaNova, type Devolucao, type MeioDevolucao, type MotivoDevolucao, type SituacaoPeca, type SolucaoDevolucao,
 } from '../dominio/devolucoes.ts';
 
 export interface EntradaDevolucao {
@@ -89,7 +89,7 @@ export async function darEntradaPeca(
     if (r.resultado === 'conserto' && peca.situacao === 'em_conserto') throw new Error('Esta peça já está em conserto.');
     const agora = new Date().toISOString();
     const item = p.itens[peca.indice];
-    let situacao = peca.situacao;
+    let situacao: SituacaoPeca = peca.situacao;
     if (r.resultado === 'ok') {
       situacao = 'no_estoque';
       const prod = item?.produtoId ? await db.produtos.get(item.produtoId) : undefined;
