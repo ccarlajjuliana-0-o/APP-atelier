@@ -3,9 +3,9 @@
 // - movimentações de estoque só se acrescentam (nunca mudam), então basta juntar as dos dois lados;
 // - nada é apagado: arquivar é só uma alteração.
 
-/** Tabelas locais que vão para a nuvem. Fontes, escritas e mostruário ficam de fora (o mostruário já tem a sua própria nuvem). */
+/** Tabelas locais que vão para a nuvem. Escritas e mostruário ficam de fora (o mostruário já tem a sua própria nuvem). */
 export const TABELAS_SINCRONIZADAS = [
-  'materiais', 'movimentacoes', 'fornecedores', 'produtos', 'clientes', 'pedidos', 'despesas', 'ajustes', 'equipamentos', 'publicacoes', 'preferencias', 'temas', 'identidade',
+  'materiais', 'movimentacoes', 'fornecedores', 'produtos', 'clientes', 'pedidos', 'despesas', 'ajustes', 'equipamentos', 'publicacoes', 'preferencias', 'temas', 'identidade', 'fontes', 'orcamentos', 'extras', 'formularios',
 ] as const;
 export type TabelaSincronizada = (typeof TABELAS_SINCRONIZADAS)[number];
 

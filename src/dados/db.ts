@@ -1,8 +1,10 @@
 import Dexie, { type Table } from 'dexie';
 import type { Movimentacao } from '../dominio/estoque.ts';
 import type { Categoria, Unidade } from '../dominio/materiais.ts';
-import type { ItemProduto, Linha, Perfil3D } from '../dominio/produtos.ts';
+import type { FichaProduto, ItemProduto, Linha, Perfil3D, TipoColecao } from '../dominio/produtos.ts';
 import type { GrupoOpcoes } from '../dominio/opcoes.ts';
+import type { ExtraCatalogo } from '../dominio/extras.ts';
+import type { Orcamento } from '../dominio/orcamentos.ts';
 import type { ItemPedido, Pagamento, Reserva, StatusPedido } from '../dominio/pedidos.ts';
 import type { TipoPedido } from '../dominio/prazo.ts';
 import type { Ajustes, Despesa } from '../dominio/financeiro.ts';
@@ -55,7 +57,8 @@ export interface TracoRegistro {
 
 export interface MostruarioRegistro {
   id: string;
-  tipo: 'modelo' | 'adesivo';
+  tipo: 'modelo' | 'capa' | 'adesivo'; // modelo = miolo
+  manual?: boolean; // capa adicionada à mão (o pacote do Estúdio não a esconde)
   nome: string;
   categoria: string;
   descricao: string;
@@ -87,8 +90,15 @@ export interface Produto {
   tempoTrabalhoMin: number;
   precoCentavos: number | null; // preço de venda atual (o sugerido vem na precificação)
   receita: ItemProduto[];
-  modo?: 'catalogo' | 'personalizado'; // catálogo: pré-montado com extras; personalizado: 100% feito pelo formulário
-  opcoes?: GrupoOpcoes[]; // formulário personalizado: escolhas do cliente ligadas ao estoque
+  modo?: 'catalogo' | 'personalizado'; // legado
+  opcoes?: GrupoOpcoes[]; // variações do produto (ex.: cor da capa azul/roxo)
+  ficha?: FichaProduto; // descrição: tipo, tamanho, cor, encadernação, folhas
+  colecaoTipo?: TipoColecao;
+  colecao?: string; // agrupamento: coleção, temporada, data comemorativa ou temática
+  prontos?: number; // unidades já prontas (feitas)
+  capaId?: string | null; // do Mostruário
+  miolosIds?: string[];
+  adesivosIds?: string[];
   perfil3d: Perfil3D | null;
   fotos?: Blob[];
   ativo: boolean;
@@ -121,6 +131,15 @@ export interface Pedido {
   entregueEm: string | null; // AAAA-MM-DD
   pagamentos: Pagamento[];
   reservas: Reserva[]; // material reservado e ainda não baixado
+  orcamentoId?: string | null;
+  orcamentoNumero?: number | null;
+  atualizadoEm: string;
+}
+
+/** Perguntas do orçamento personalizado (um registro só, id 'orcamento'). */
+export interface FormularioRegistro {
+  id: string;
+  grupos: GrupoOpcoes[];
   atualizadoEm: string;
 }
 
@@ -152,6 +171,9 @@ class BancoAtelie extends Dexie {
   preferencias!: Table<PreferenciasRegistro, string>;
   temas!: Table<TemaPersonalizado, string>;
   identidade!: Table<IdentidadeRegistro, string>;
+  orcamentos!: Table<Orcamento, string>;
+  extras!: Table<ExtraCatalogo, string>;
+  formularios!: Table<FormularioRegistro, string>;
 
   constructor() {
     super('craft-notes-atelie');
@@ -173,6 +195,7 @@ class BancoAtelie extends Dexie {
     this.version(11).stores({ temas: 'id', identidade: 'id' });
     // As fontes passam a ir para a nuvem: as que já existem neste aparelho são marcadas como alteradas agora, para serem enviadas.
     this.version(12).stores({}).upgrade((tx) => tx.table('fontes').toCollection().modify((f) => { f.atualizadoEm = new Date().toISOString(); }));
+    this.version(13).stores({ orcamentos: 'id, numero, status, clienteId', extras: 'id', formularios: 'id' });
   }
 }
 

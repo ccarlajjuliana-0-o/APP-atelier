@@ -43,6 +43,7 @@ export interface ItemPedido {
   observacao: string; // nome a gravar, cor, detalhes
   escolhas?: EscolhaItem[]; // opções do formulário personalizado
   precoBaseCentavos?: number; // preço sem as opções (precoUnit = base + opções)
+  personalizado?: boolean; // montado pelo formulário (sem produto do catálogo)
 }
 
 export interface Pagamento {
@@ -124,8 +125,8 @@ export function necessidades(
   const essencial: Record<string, number> = {};
   const extra: Record<string, number> = {};
   for (const it of itens) {
-    if (!it.produtoId || !(it.quantidade > 0)) continue;
-    for (const r of receitas[it.produtoId] ?? []) {
+    if (!(it.quantidade > 0)) continue;
+    for (const r of (it.produtoId ? receitas[it.produtoId] : undefined) ?? []) {
       const q = qtdEfetiva(r) * it.quantidade;
       if (!(q > 0)) continue;
       const alvo = r.extra ? extra : essencial;

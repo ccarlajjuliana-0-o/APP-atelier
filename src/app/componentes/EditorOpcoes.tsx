@@ -3,18 +3,18 @@ import type { Material } from '../../dados/db.ts';
 import { novoId } from '../../dados/db.ts';
 import { lerNumero } from '../../dominio/materiais.ts';
 import { TIPOS_GRUPO, ehEscolha, type GrupoOpcoes, type OpcaoProduto, type TipoGrupo } from '../../dominio/opcoes.ts';
-import { modeloAgenda } from '../../dominio/modeloAgenda.ts';
+import { formularioPadrao } from '../../dominio/formularioPadrao.ts';
 import type { InfoMaterial } from '../../dominio/produtos.ts';
 
 export interface OpcaoForm { id: string; nome: string; materialId: string; quantidade: string; desperdicio: string; acrescimo: string; padrao: boolean; variantes: string[]; pedeTexto: string }
-export interface GrupoForm { id: string; nome: string; descricao: string; tipo: TipoGrupo; obrigatorio: boolean; permiteOutro: boolean; opcoes: OpcaoForm[] }
+export interface GrupoForm { id: string; nome: string; descricao: string; tipo: TipoGrupo; obrigatorio: boolean; permiteOutro: boolean; mostrarSe: { grupoId: string; opcaoIds: string[] } | null; opcoes: OpcaoForm[] }
 
 const txt = (n: number) => (n ? String(n).replace('.', ',') : '');
 const num = (s: string) => { const v = lerNumero(s || '0'); return Number.isNaN(v) ? 0 : Math.max(0, v); };
 
 export function gruposParaForm(gs: GrupoOpcoes[]): GrupoForm[] {
   return gs.map((g) => ({
-    id: g.id, nome: g.nome, descricao: g.descricao ?? '', tipo: g.tipo, obrigatorio: g.obrigatorio, permiteOutro: !!g.permiteOutro,
+    id: g.id, nome: g.nome, descricao: g.descricao ?? '', tipo: g.tipo, obrigatorio: g.obrigatorio, permiteOutro: !!g.permiteOutro, mostrarSe: g.mostrarSe ?? null,
     opcoes: g.opcoes.map((o) => ({
       id: o.id, nome: o.nome, materialId: o.materialId ?? '', quantidade: txt(o.quantidade), desperdicio: txt(o.desperdicioPct),
       acrescimo: o.acrescimoCentavos === null ? '' : (o.acrescimoCentavos / 100).toFixed(2).replace('.', ','), padrao: o.padrao, variantes: o.variantes ?? [], pedeTexto: o.pedeTexto ?? '',
@@ -26,6 +26,7 @@ export function gruposDoForm(gs: GrupoForm[]): GrupoOpcoes[] {
   return gs.map((g) => ({
     id: g.id, nome: g.nome.trim(), ...(g.descricao.trim() ? { descricao: g.descricao.trim() } : {}), tipo: g.tipo, obrigatorio: g.tipo === 'secao' ? false : g.obrigatorio,
     ...(g.permiteOutro && ehEscolha(g.tipo) ? { permiteOutro: true } : {}),
+    ...(g.mostrarSe && g.mostrarSe.opcaoIds.length ? { mostrarSe: g.mostrarSe } : {}),
     opcoes: (ehEscolha(g.tipo) ? g.opcoes : []).map((o): OpcaoProduto => ({
       id: o.id, nome: o.nome.trim(), materialId: o.variantes.length ? null : o.materialId || null,
       ...(o.variantes.length ? { variantes: o.variantes } : {}),
@@ -40,7 +41,7 @@ function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return <label className="campo"><span>{rotulo}</span>{children}</label>;
 }
 
-export function EditorOpcoes(p: { catalogo: boolean; grupos: GrupoForm[]; aoMudar: (g: GrupoForm[]) => void; materiais: Material[]; info: Record<string, InfoMaterial> }) {
+export function EditorOpcoes(p: { catalogo: boolean; titulo?: string; explicacao?: string; grupos: GrupoForm[]; aoMudar: (g: GrupoForm[]) => void; materiais: Material[]; info: Record<string, InfoMaterial> }) {
   const { grupos } = p;
   const setG = (gi: number, parte: Partial<GrupoForm>) => p.aoMudar(grupos.map((g, k) => (k === gi ? { ...g, ...parte } : g)));
   const setO = (gi: number, oi: number, parte: Partial<OpcaoForm>) =>
@@ -52,11 +53,11 @@ export function EditorOpcoes(p: { catalogo: boolean; grupos: GrupoForm[]; aoMuda
 
   return (
     <>
-      <h2 style={{ marginTop: 18 }}>{p.catalogo ? 'Personalizações e extras (opcionais)' : 'Perguntas do formulário'}</h2>
+      <h2 style={{ marginTop: 18 }}>{p.titulo ?? (p.catalogo ? 'Variações do produto (opcional)' : 'Perguntas do formulário')}</h2>
       <p className="suave">
-        {p.catalogo
-          ? 'O que a cliente pode mudar neste produto pronto: cor da capa, nome na capa, elástico, cantoneira, outro miolo… O que já vem no produto fica na receita; aqui entram as trocas e os extras. Todo extra pode ter um valor a mais (use 0,00 para uma opção sem custo, como a cor padrão).'
-          : 'As perguntas que a cliente responde para montar o produto do zero (cores, estilo, versão, miolos…). Cada opção pode ter um valor a mais e/ou um material do estoque, que fica reservado e some se acabar.'}
+        {p.explicacao ?? (p.catalogo
+          ? 'Trocas que a cliente pode fazer neste produto pronto, como a cor da capa (azul já marcada, roxo opcional). Use 0,00 no acréscimo para uma opção sem custo, como a cor padrão. Elástico, cantoneira etc. ficam em Extras.'
+          : 'As perguntas que a cliente responde para montar o produto do zero (cores, estilo, versão, miolos…). Cada opção pode ter um valor a mais e/ou um material do estoque, que fica reservado e some se acabar.')}
       </p>
       {grupos.map((g, gi) => (
         <div key={g.id} className="cartao" style={{ marginTop: 8, padding: 12 }}>
@@ -78,6 +79,30 @@ export function EditorOpcoes(p: { catalogo: boolean; grupos: GrupoForm[]; aoMuda
                 <label className="linha"><input type="checkbox" checked={g.permiteOutro} onChange={(e) => setG(gi, { permiteOutro: e.target.checked })} /> Permitir “Outro:”</label>
               )}
             </div>
+          )}
+          {grupos.slice(0, gi).some((x) => ehEscolha(x.tipo)) && (
+            <details style={{ marginTop: 6 }} open={!!g.mostrarSe}>
+              <summary className="suave">{g.mostrarSe ? 'Só aparece em certos casos' : 'Aparecer só em certos casos (opcional)'}</summary>
+              <div className="linha" style={{ gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                <span>Só mostrar se</span>
+                <select value={g.mostrarSe?.grupoId ?? ''} onChange={(e) => setG(gi, { mostrarSe: e.target.value ? { grupoId: e.target.value, opcaoIds: [] } : null })}>
+                  <option value="">— sempre aparece —</option>
+                  {grupos.slice(0, gi).filter((x) => ehEscolha(x.tipo)).map((x) => <option key={x.id} value={x.id}>{x.nome || '(sem nome)'}</option>)}
+                </select>
+              </div>
+              {g.mostrarSe && (
+                <div style={{ marginTop: 4 }}>
+                  <span className="suave">for uma destas respostas:</span>
+                  {(grupos.find((x) => x.id === g.mostrarSe!.grupoId)?.opcoes ?? []).map((op) => (
+                    <label key={op.id} className="linha" style={{ gap: 6 }}>
+                      <input type="checkbox" checked={g.mostrarSe!.opcaoIds.includes(op.id)}
+                        onChange={(e) => setG(gi, { mostrarSe: { grupoId: g.mostrarSe!.grupoId, opcaoIds: e.target.checked ? [...g.mostrarSe!.opcaoIds, op.id] : g.mostrarSe!.opcaoIds.filter((v) => v !== op.id) } })} />
+                      {op.nome}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </details>
           )}
           {ehEscolha(g.tipo) && g.opcoes.map((o, oi) => {
             const m = o.materialId ? p.info[o.materialId] : null;
@@ -139,8 +164,8 @@ export function EditorOpcoes(p: { catalogo: boolean; grupos: GrupoForm[]; aoMuda
         </div>
       ))}
       <div className="linha" style={{ marginTop: 8, gap: 8 }}>
-        <button className="btn" onClick={() => p.aoMudar([...grupos, { id: novoId(), nome: '', descricao: '', tipo: 'unica', obrigatorio: false, permiteOutro: false, opcoes: [] }])}>+ Adicionar pergunta</button>
-        <button className="btn" onClick={() => p.aoMudar([...grupos, ...gruposParaForm(modeloAgenda(novoId))])}>+ Modelo “Agenda personalizada”</button>
+        <button className="btn" onClick={() => p.aoMudar([...grupos, { id: novoId(), nome: '', descricao: '', tipo: 'unica', obrigatorio: false, permiteOutro: false, mostrarSe: null, opcoes: [] }])}>+ Adicionar pergunta</button>
+        <button className="btn" onClick={() => p.aoMudar([...grupos, ...gruposParaForm(formularioPadrao(novoId))])}>+ Adicionar perguntas padrão</button>
       </div>
     </>
   );

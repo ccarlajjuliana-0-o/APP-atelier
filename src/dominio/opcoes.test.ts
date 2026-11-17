@@ -60,7 +60,7 @@ test('escolhas entram nas necessidades de material', () => {
 });
 
 import { definirTexto, definirOutro, trocarVariante, variantesDisponiveis, linhasDeEscolhas } from './opcoes.ts';
-import { modeloAgenda } from './modeloAgenda.ts';
+import { formularioPadrao } from './formularioPadrao.ts';
 
 test('cantoneira: acréscimo fixo e só os tipos com estoque', () => {
   const inf: Record<string, InfoMaterial> = {
@@ -90,11 +90,11 @@ test('texto, Outro e linhas por pergunta', () => {
   assert.deepEqual(gruposPendentes([{ ...g, tipo: 'texto' }], [], {}), ['Estilo']);
 });
 
-test('modelo da agenda tem perguntas e seções', () => {
+test('formulário padrão tem perguntas, seções e condições', () => {
   let n = 0;
-  const m = modeloAgenda(() => `i${n++}`);
+  const m = formularioPadrao(() => `i${n++}`);
   assert.ok(m.length >= 20);
-  assert.ok(m.some((g) => g.tipo === 'secao') && m.some((g) => g.tipo === 'email'));
+  assert.ok(m.some((g) => g.tipo === 'secao') && m.some((g) => g.mostrarSe));
   assert.equal(new Set(m.flatMap((g) => [g.id, ...g.opcoes.map((o) => o.id)])).size, n);
 });
 
@@ -108,4 +108,41 @@ test('extra que pede texto (nome na capa) com valor', () => {
   assert.equal(e[0].opcaoNome, 'Nome na capa: Maria');
   assert.equal(acrescimoTotal(e), 500);
   assert.deepEqual(gruposPendentes([g], e, {}), []);
+});
+
+import { grupoVisivel, podarEscolhas, adicionarAvulso, removerEscolha } from './opcoes.ts';
+import { extrasComoGrupo, extrasPadrao } from './extras.ts';
+
+test('perguntas condicionais: costura x wire-o x disco', () => {
+  let n = 0;
+  const m = formularioPadrao(() => `i${n++}`);
+  const enc = m.find((g) => g.nome === 'Tipo de encadernação')!;
+  const wireo = m.find((g) => g.nome === 'Cor do wire-o')!;
+  const disco = m.find((g) => g.nome === 'Cor dos discos')!;
+  const costura = m.find((g) => g.nome === 'Costura')!;
+  const marcar = (nome: string) => alternarEscolha([], enc, enc.opcoes.find((o) => o.nome === nome)!, {}, 1);
+  const w = marcar('Wire-o');
+  assert.deepEqual([wireo, disco, costura].map((g) => grupoVisivel(g, m, w)), [true, false, false]);
+  assert.deepEqual([wireo, disco, costura].map((g) => grupoVisivel(g, m, marcar('Costura'))), [false, false, true]);
+  // trocar de wire-o para disco descarta a cor do wire-o
+  const comCor = alternarEscolha(w, wireo, wireo.opcoes[0], {}, 1);
+  const trocou = [...comCor.filter((e) => e.grupoId !== enc.id), ...marcar('Disco')];
+  assert.equal(podarEscolhas(m, trocou).some((e) => e.grupoId === wireo.id), false);
+  // pendências só das perguntas visíveis
+  assert.ok(!gruposPendentes(m, marcar('Disco'), {}).includes('Cor do wire-o'));
+  assert.ok(gruposPendentes(m, marcar('Disco'), {}).includes('Cor dos discos'));
+});
+
+test('extras: valores combinados, avulso somando e remoção', () => {
+  const ex = extrasPadrao('2026-01-01');
+  const g = extrasComoGrupo(ex);
+  const val = (nome: string) => g.opcoes.find((o) => o.nome === nome)!;
+  let e = alternarEscolha([], g, val('Cantoneira'), {}, 1);
+  e = alternarEscolha(e, g, val('Elástico'), {}, 1);
+  e = alternarEscolha(e, g, val('Bolso canguru'), {}, 1);
+  assert.equal(acrescimoTotal(e), 600 + 500 + 650);
+  e = adicionarAvulso(e, 'x', 'Chaveiro', 800);
+  assert.equal(acrescimoTotal(e), 600 + 500 + 650 + 800);
+  e = removerEscolha(e, g.id, '__avulso:x');
+  assert.equal(acrescimoTotal(e), 1750);
 });

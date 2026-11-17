@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { db, type MostruarioRegistro } from '../../dados/db.ts';
+import { db, novoId, type MostruarioRegistro } from '../../dados/db.ts';
 import { importarPacote } from '../../dados/mostruario.ts';
 import { filtrar } from '../../dominio/mostruario.ts';
 
@@ -8,8 +8,9 @@ const TAMANHOS = ['A4', 'A5', 'A6', 'Colegial'];
 export function Mostruario() {
   const [itens, setItens] = useState<MostruarioRegistro[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
-  const [aba, setAba] = useState<'modelo' | 'adesivo'>('modelo');
+  const [aba, setAba] = useState<'modelo' | 'capa' | 'adesivo'>('modelo');
   const [tamanho, setTamanho] = useState('');
+  const [nomeCapa, setNomeCapa] = useState('');
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
 
@@ -40,6 +41,23 @@ export function Mostruario() {
     }
   }
 
+  async function adicionarCapa(e: ChangeEvent<HTMLInputElement>) {
+    setErro('');
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    if (!arquivo.type.startsWith('image/')) return setErro('Escolha uma imagem (JPG ou PNG).');
+    const nome = nomeCapa.trim() || arquivo.name.replace(/\.[^.]+$/, '');
+    const ordem = itens.filter((i) => i.tipo === 'capa').length;
+    await db.mostruario.put({
+      id: novoId(), tipo: 'capa', nome, categoria: '', descricao: '', tamanhos: [], tamanhoBase: null, ordem, visivel: true,
+      previa: arquivo, atualizadoEm: new Date().toISOString(), manual: true,
+    });
+    setNomeCapa('');
+    setMsg(`Capa “${nome}” adicionada.`);
+    await recarregar();
+  }
+
   async function alternar(i: MostruarioRegistro) {
     await db.mostruario.update(i.id, { visivel: !i.visivel });
     await recarregar();
@@ -51,7 +69,7 @@ export function Mostruario() {
   return (
     <>
       <h1>Mostruário</h1>
-      <p className="suave">Modelos de páginas e adesivos para o cliente escolher. Vêm do Estúdio de Miolos: baixe o pacote lá e importe aqui.</p>
+      <p className="suave">Miolos, capas e adesivos para a cliente escolher. Miolos e adesivos vêm do Estúdio de Miolos (baixe o pacote lá e importe aqui); as capas você pode adicionar daqui mesmo, pela imagem.</p>
       <div className="faixa" />
       <div className="cartao">
         <div className="linha">
@@ -59,7 +77,8 @@ export function Mostruario() {
             Importar pacote (.json)
             <input type="file" accept=".json,application/json" hidden onChange={(e) => void aoEscolher(e)} />
           </label>
-          <button className="pilula" aria-pressed={aba === 'modelo'} onClick={() => setAba('modelo')}>Modelos de página</button>
+          <button className="pilula" aria-pressed={aba === 'modelo'} onClick={() => setAba('modelo')}>Miolos</button>
+          <button className="pilula" aria-pressed={aba === 'capa'} onClick={() => setAba('capa')}>Capas</button>
           <button className="pilula" aria-pressed={aba === 'adesivo'} onClick={() => setAba('adesivo')}>Adesivos</button>
           {aba === 'modelo' && (
             <select value={tamanho} onChange={(e) => setTamanho(e.target.value)} aria-label="Tamanho">
@@ -68,11 +87,21 @@ export function Mostruario() {
             </select>
           )}
         </div>
+        {aba === 'capa' && (
+          <div className="linha" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}>
+            <input type="text" placeholder="Nome da capa (opcional)" value={nomeCapa} onChange={(e) => setNomeCapa(e.target.value)} style={{ width: 220 }} />
+            <label className="btn" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              + Adicionar capa (imagem)
+              <input type="file" accept="image/*" hidden onChange={(e) => void adicionarCapa(e)} />
+            </label>
+            <span className="suave">As capas adicionadas aqui ficam neste aparelho e no backup.</span>
+          </div>
+        )}
         {msg && <p className="ok">{msg}</p>}
         {erro && <p className="aviso">{erro}</p>}
       </div>
       {itens.length === 0 ? (
-        <div className="cartao suave">Nada por aqui ainda. Importe o pacote do Estúdio de Miolos para ver os modelos e adesivos.</div>
+        <div className="cartao suave">Nada por aqui ainda. Importe o pacote do Estúdio de Miolos para ver miolos e adesivos, ou adicione capas na aba Capas.</div>
       ) : (
         <div className="grade" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))' }}>
           {visiveis.map((i) => (

@@ -4,6 +4,24 @@ import { microParaCentavos } from './dinheiro.ts';
 export type Linha = 'encadernacao' | 'impressao3d';
 export const LINHAS: Record<Linha, string> = { encadernacao: 'Encadernação', impressao3d: 'Impressão 3D' };
 
+/** Descrição do produto, um campo para cada: ex. planner diário, A5, azul, wire-o, 90 folhas. */
+export interface FichaProduto {
+  tipo: string;
+  tamanho: string;
+  cor: string;
+  encadernacao: string;
+  folhas: string;
+}
+export const FICHA_VAZIA: FichaProduto = { tipo: '', tamanho: '', cor: '', encadernacao: '', folhas: '' };
+
+export type TipoColecao = 'colecao' | 'temporada' | 'data' | 'tema';
+export const TIPOS_COLECAO: Record<TipoColecao, string> = { colecao: 'Coleção', temporada: 'Temporada', data: 'Data comemorativa', tema: 'Temática' };
+
+export function resumoFicha(f: Partial<FichaProduto> | undefined): string {
+  if (!f) return '';
+  return [f.tipo, f.tamanho, f.cor, f.encadernacao, f.folhas && `${f.folhas} folhas`].filter((x) => !!x && String(x).trim()).join(' · ');
+}
+
 export interface ItemProduto {
   materialId: string;
   quantidade: number; // por unidade do produto, em unidades de estoque

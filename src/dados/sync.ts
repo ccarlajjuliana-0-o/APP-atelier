@@ -197,6 +197,12 @@ function registrarGanchos() {
   db.identidade.hook('updating', marcar);
   db.fontes.hook('creating', marcar);
   db.fontes.hook('updating', marcar);
+  db.orcamentos.hook('creating', marcar);
+  db.orcamentos.hook('updating', marcar);
+  db.extras.hook('creating', marcar);
+  db.extras.hook('updating', marcar);
+  db.formularios.hook('creating', marcar);
+  db.formularios.hook('updating', marcar);
 }
 
 /** Liga a sincronização automática: ao abrir, a cada poucos minutos, ao voltar a internet, ao voltar para a aba e ~15 s depois de cada alteração. */

@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { Material, Produto } from '../../dados/db.ts';
+import { db, type Material, type MostruarioRegistro, type Produto } from '../../dados/db.ts';
 import { listarMateriais, saldos } from '../../dados/materiais.ts';
 import { CampoFotos, Miniatura } from '../componentes/Fotos.tsx';
 import { duplicarProduto, listarProdutos, salvarProduto } from '../../dados/produtos.ts';
 import { CATEGORIAS, UNIDADES, lerNumero, microParaTexto } from '../../dominio/materiais.ts';
 import { centavosParaTexto } from '../../dominio/dinheiro.ts';
 import { EditorOpcoes, gruposParaForm, gruposDoForm, type GrupoForm } from '../componentes/EditorOpcoes.tsx';
-import { LINHAS, resumoProduto, type InfoMaterial, type ItemProduto, type Linha, type Perfil3D } from '../../dominio/produtos.ts';
+import { ExtrasCatalogo } from '../componentes/ExtrasCatalogo.tsx';
+import { FICHA_VAZIA, LINHAS, TIPOS_COLECAO, resumoFicha, resumoProduto, type FichaProduto, type TipoColecao, type InfoMaterial, type ItemProduto, type Linha, type Perfil3D } from '../../dominio/produtos.ts';
 
 const PERFIL_PADRAO: Perfil3D = {
   paredes: 3, preenchimentoTipo: 'grade', preenchimentoPct: 15, alturaCamadaMm: 0.2, cor: 'mono', tempoImpressaoMin: 0, observacoes: '',
 };
 const TIPOS_PREENCHIMENTO = ['grade', 'giroide', 'linhas', 'cúbico', 'triangular', 'outro'];
 
-function novoProduto(modo: 'catalogo' | 'personalizado'): Produto {
+function novoProduto(): Produto {
   return {
     id: '', nome: '', linha: 'encadernacao', categoria: '', tempoTrabalhoMin: 0, precoCentavos: null,
-    receita: [], modo, opcoes: [], perfil3d: null, ativo: true, atualizadoEm: '',
+    receita: [], modo: 'catalogo', opcoes: [], ficha: { ...FICHA_VAZIA }, prontos: 0, perfil3d: null, ativo: true, atualizadoEm: '',
   };
 }
 
@@ -27,12 +28,15 @@ export function Produtos() {
   const [filtro, setFiltro] = useState<Linha | 'todas' | 'extra'>('todas');
   const [arquivados, setArquivados] = useState(false);
   const [editando, setEditando] = useState<Produto | null>(null);
+  const [mostruario, setMostruario] = useState<MostruarioRegistro[]>([]);
+  const [colecaoFiltro, setColecaoFiltro] = useState('');
   const [msg, setMsg] = useState('');
   const painelRef = useRef<HTMLDivElement | null>(null);
 
   async function recarregar() {
     setLista(await listarProdutos());
     setMateriais(await listarMateriais());
+    setMostruario(await db.mostruario.toArray());
     const s = await saldos();
     setSaldo(Object.fromEntries(Object.entries(s).map(([id, v]) => [id, v.disponivel])));
   }
@@ -53,23 +57,28 @@ export function Produtos() {
   const linhas = lista
     .filter((p) => (arquivados ? !p.ativo : p.ativo))
     .map((p) => ({ p, r: resumoProduto(p.receita, info) }))
-    .filter(({ p, r }) => (filtro === 'todas' ? true : filtro === 'extra' ? r.extrasEmFalta.length > 0 : p.linha === filtro));
+    .filter(({ p, r }) => (filtro === 'todas' ? true : filtro === 'extra' ? r.extrasEmFalta.length > 0 : p.linha === filtro))
+    .filter(({ p }) => (colecaoFiltro === '' ? true : colecaoFiltro === '__sem' ? !p.colecao : p.colecao === colecaoFiltro));
+  const colecoes = Array.from(new Set(lista.map((p) => p.colecao ?? '').filter((c) => c !== ''))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const grupos = [...colecoes, ''].map((c) => ({ nome: c, itens: linhas.filter(({ p }) => (p.colecao ?? '') === c) })).filter((g) => g.itens.length > 0);
+  async function ajustarProntos(p: Produto, delta: number) {
+    await salvarProduto({ ...p, prontos: Math.max(0, (p.prontos ?? 0) + delta) });
+    await recarregar();
+  }
 
   const nomeMat = (id: string | null) => (id ? info[id]?.nome ?? '—' : '—');
 
   return (
     <>
-      <h1>Produtos</h1>
+      <h1>Catálogo</h1>
       <p className="suave">
-        <strong>Catálogo:</strong> produto pronto, com receita fixa e poucos extras opcionais (cor da capa, nome, elástico, cantoneira…).{' '}
-        <strong>100% personalizado:</strong> montado pelo formulário de perguntas. Com a receita o app calcula custo e quantos dá para fazer com o estoque.
+        Seus produtos prontos, com a ficha de cada um, a coleção, quantos já estão prontos e quantos dá para fazer com o estoque. Orçamentos e pedidos puxam daqui.
       </p>
       <div className="faixa" />
 
       <div className="cartao">
         <div className="linha">
-          <button className="btn primario" onClick={() => setEditando(novoProduto('catalogo'))}>Novo produto de catálogo</button>
-          <button className="btn primario" onClick={() => setEditando(novoProduto('personalizado'))}>Novo produto 100% personalizado</button>
+          <button className="btn primario" onClick={() => setEditando(novoProduto())}>Novo produto</button>
           <label className="linha" style={{ marginLeft: 'auto' }}>
             <input type="checkbox" checked={arquivados} onChange={(e) => setArquivados(e.target.checked)} /> Ver arquivados
           </label>
@@ -80,6 +89,13 @@ export function Produtos() {
           <button className="pilula" aria-pressed={filtro === 'encadernacao'} onClick={() => setFiltro('encadernacao')}>Encadernação</button>
           <button className="pilula" aria-pressed={filtro === 'impressao3d'} onClick={() => setFiltro('impressao3d')}>Impressão 3D</button>
           <button className="pilula" aria-pressed={filtro === 'extra'} onClick={() => setFiltro('extra')}>Com extra em falta</button>
+          {colecoes.length > 0 && (
+            <select value={colecaoFiltro} onChange={(e) => setColecaoFiltro(e.target.value)} aria-label="Coleção">
+              <option value="">Todas as coleções</option>
+              {colecoes.map((c) => <option key={c} value={c}>{c}</option>)}
+              <option value="__sem">Sem coleção</option>
+            </select>
+          )}
         </div>
       </div>
 
@@ -90,6 +106,8 @@ export function Produtos() {
             inicial={editando}
             materiais={materiais.filter((m) => m.ativo)}
             info={info}
+            mostruario={mostruario.filter((m) => m.visivel)}
+            colecoes={colecoes}
             fechar={() => setEditando(null)}
             aoSalvar={async (texto) => {
               setMsg(texto);
@@ -106,17 +124,19 @@ export function Produtos() {
         <div className="cartao" style={{ padding: 0, overflowX: 'auto' }}>
           <table className="tabela">
             <thead>
-              <tr><th>Produto</th><th>Preço atual</th><th>Custo de material</th><th>Dá para produzir</th><th>Material que limita</th><th /></tr>
+              <tr><th>Produto</th><th>Preço atual</th><th>Custo de material</th><th>Prontos</th><th>Dá para produzir</th><th>Material que limita</th><th /></tr>
             </thead>
             <tbody>
-              {linhas.map(({ p, r }) => (
+              {grupos.map((g) => [
+                <tr key={`g-${g.nome}`}><td colSpan={7} style={{ background: 'var(--neutro)' }}><strong>{g.nome ? `${g.itens[0].p.colecaoTipo ? TIPOS_COLECAO[g.itens[0].p.colecaoTipo] + ': ' : ''}${g.nome}` : 'Sem coleção'}</strong></td></tr>,
+                ...g.itens.map(({ p, r }) => (
                 <tr key={p.id}>
                   <td>
                     <div className="linha" style={{ flexWrap: 'nowrap' }}>
                       <Miniatura foto={p.fotos?.[0]} />
                       <div>
                         <strong>{p.nome}</strong>
-                        <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{p.modo === 'personalizado' ? '100% personalizado · ' : 'Catálogo · '}{LINHAS[p.linha]}{p.categoria ? ` · ${p.categoria}` : ''}</div>
+                        <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{resumoFicha(p.ficha) || `${LINHAS[p.linha]}${p.categoria ? ` · ${p.categoria}` : ''}`}</div>
                       </div>
                     </div>
                   </td>
@@ -124,6 +144,11 @@ export function Produtos() {
                   <td>
                     {p.receita.length ? centavosParaTexto(r.custoCentavos) : '—'}
                     {r.semCusto.length > 0 && <div className="suave" style={{ fontSize: 'calc(12px * var(--escala, 1))' }}>faltam custos de {r.semCusto.length} material(is)</div>}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button className="btn" aria-label="Menos um pronto" onClick={() => void ajustarProntos(p, -1)}>−</button>{' '}
+                    <strong>{p.prontos ?? 0}</strong>{' '}
+                    <button className="btn" aria-label="Mais um pronto" onClick={() => void ajustarProntos(p, 1)}>+</button>
                   </td>
                   <td>{r.quantidade === null ? '—' : `${r.quantidade} un`}</td>
                   <td>
@@ -139,15 +164,18 @@ export function Produtos() {
                     </div>
                   </td>
                 </tr>
-              ))}
-              {linhas.length === 0 && <tr><td colSpan={6} className="suave">Nada nesta lista.</td></tr>}
+                )),
+              ])}
+              {linhas.length === 0 && <tr><td colSpan={7} className="suave">Nada nesta lista.</td></tr>}
             </tbody>
           </table>
         </div>
       )}
       <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
-        O custo mostrado considera só os materiais da receita. Tempo de trabalho, tinta, desgaste das máquinas e o desperdício geral entram na precificação.
+        “Prontos” é o que já está feito e guardado (ajuste com − e +). “Dá para produzir” é o que o estoque de material permite agora.
+        O custo considera só os materiais da receita; tempo de trabalho, tinta, desgaste e desperdício entram na precificação.
       </p>
+      <ExtrasCatalogo materiais={materiais.filter((m) => m.ativo)} />
     </>
   );
 }
@@ -172,10 +200,12 @@ function FormProduto(p: {
   inicial: Produto;
   materiais: Material[];
   info: Record<string, InfoMaterial>;
+  mostruario: MostruarioRegistro[];
+  colecoes: string[];
   fechar: () => void;
   aoSalvar: (msg: string) => Promise<void>;
 }) {
-  const catalogo = p.inicial.modo !== 'personalizado';
+  const catalogo = true;
   const [nome, setNome] = useState(p.inicial.nome);
   const [linha, setLinha] = useState<Linha>(p.inicial.linha);
   const [categoria, setCategoria] = useState(p.inicial.categoria);
@@ -185,6 +215,12 @@ function FormProduto(p: {
     p.inicial.receita.map((i) => ({ materialId: i.materialId, quantidade: String(i.quantidade).replace('.', ','), desperdicio: i.desperdicioPct ? String(i.desperdicioPct).replace('.', ',') : '', extra: i.extra })),
   );
   const [grupos, setGrupos] = useState<GrupoForm[]>(gruposParaForm(p.inicial.opcoes ?? []));
+  const [ficha, setFicha] = useState<FichaProduto>({ ...FICHA_VAZIA, ...(p.inicial.ficha ?? {}) });
+  const [colecaoTipo, setColecaoTipo] = useState<TipoColecao>(p.inicial.colecaoTipo ?? 'colecao');
+  const [colecao, setColecao] = useState(p.inicial.colecao ?? '');
+  const [capaId, setCapaId] = useState(p.inicial.capaId ?? '');
+  const [miolosIds, setMiolosIds] = useState<string[]>(p.inicial.miolosIds ?? []);
+  const [adesivosIds, setAdesivosIds] = useState<string[]>(p.inicial.adesivosIds ?? []);
   const [perfil, setPerfil] = useState<Perfil3D>(p.inicial.perfil3d ?? PERFIL_PADRAO);
   const [fotos, setFotos] = useState<Blob[]>(p.inicial.fotos ?? []);
   const [erro, setErro] = useState('');
@@ -225,7 +261,10 @@ function FormProduto(p: {
       nome: n, linha, categoria: categoria.trim(), tempoTrabalhoMin: t,
       precoCentavos: pc === null ? null : Math.round(pc * 100),
       receita: itensNum,
-      modo: catalogo ? 'catalogo' : 'personalizado',
+      modo: 'catalogo',
+      ficha,
+      colecaoTipo, colecao: colecao.trim(),
+      capaId: capaId || null, miolosIds, adesivosIds,
       opcoes: gruposNum,
       perfil3d: linha === 'impressao3d' ? perfil : null,
       fotos,
@@ -236,7 +275,7 @@ function FormProduto(p: {
 
   return (
     <div className="cartao">
-      <h2>{catalogo ? 'Produto de catálogo' : 'Produto 100% personalizado'}{p.inicial.id ? '' : ' (novo)'}</h2>
+      <h2>{p.inicial.id ? 'Produto do catálogo' : 'Novo produto'}</h2>
       <div className="formgrid">
         <Campo rotulo="Nome"><input type="text" value={nome} onChange={(e) => setNome(e.target.value)} /></Campo>
         <Campo rotulo="Linha">
@@ -249,11 +288,35 @@ function FormProduto(p: {
         <Campo rotulo="Preço de venda atual (R$, opcional)"><input type="text" inputMode="decimal" placeholder="0,00" value={preco} onChange={(e) => setPreco(e.target.value)} /></Campo>
       </div>
 
+      <h3 style={{ margin: '16px 0 6px' }}>Descrição do produto</h3>
+      <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>Um campo para cada item, ex.: planner diário · A5 · azul · wire-o · 90 folhas.</p>
+      <div className="formgrid">
+        <Campo rotulo="Tipo (ex.: planner diário)"><input type="text" value={ficha.tipo} onChange={(e) => setFicha({ ...ficha, tipo: e.target.value })} /></Campo>
+        <Campo rotulo="Tamanho (ex.: A5)"><input type="text" value={ficha.tamanho} onChange={(e) => setFicha({ ...ficha, tamanho: e.target.value })} /></Campo>
+        <Campo rotulo="Cor"><input type="text" value={ficha.cor} onChange={(e) => setFicha({ ...ficha, cor: e.target.value })} /></Campo>
+        <Campo rotulo="Encadernação (wire-o, disco, costura)"><input type="text" value={ficha.encadernacao} onChange={(e) => setFicha({ ...ficha, encadernacao: e.target.value })} /></Campo>
+        <Campo rotulo="Folhas (ex.: 90)"><input type="text" inputMode="numeric" value={ficha.folhas} onChange={(e) => setFicha({ ...ficha, folhas: e.target.value })} /></Campo>
+      </div>
+
+      <h3 style={{ margin: '16px 0 6px' }}>Agrupamento</h3>
+      <div className="formgrid">
+        <Campo rotulo="Tipo de agrupamento">
+          <select value={colecaoTipo} onChange={(e) => setColecaoTipo(e.target.value as TipoColecao)}>
+            {(Object.keys(TIPOS_COLECAO) as TipoColecao[]).map((t) => <option key={t} value={t}>{TIPOS_COLECAO[t]}</option>)}
+          </select>
+        </Campo>
+        <Campo rotulo="Nome (ex.: Natal 2026, Volta às aulas, Floral)">
+          <input type="text" list="colecoes-existentes" value={colecao} onChange={(e) => setColecao(e.target.value)} />
+          <datalist id="colecoes-existentes">{p.colecoes.map((c) => <option key={c} value={c} />)}</datalist>
+        </Campo>
+      </div>
+
+      <h3 style={{ margin: '16px 0 6px' }}>Do mostruário</h3>
+      <MostruarioDoProduto mostruario={p.mostruario} capaId={capaId} setCapaId={setCapaId} miolosIds={miolosIds} setMiolosIds={setMiolosIds} adesivosIds={adesivosIds} setAdesivosIds={setAdesivosIds} />
+
       <div style={{ marginTop: 12 }}>
         <CampoFotos fotos={fotos} max={4} rotulo="Fotos do produto (até 4)" aoMudar={setFotos} />
       </div>
-
-      {!catalogo && <EditorOpcoes catalogo={false} grupos={grupos} aoMudar={setGrupos} materiais={p.materiais} info={p.info} />}
 
       <details open={catalogo || itens.length > 0} style={{ marginTop: 6 }}>
       <summary style={{ cursor: 'pointer', marginTop: 12 }}><strong style={{ fontSize: '1.15em' }}>{catalogo ? 'Receita (por unidade)' : 'Materiais fixos (opcional)'}</strong></summary>
@@ -329,7 +392,7 @@ function FormProduto(p: {
 
       </details>
 
-      {catalogo && <EditorOpcoes catalogo grupos={grupos} aoMudar={setGrupos} materiais={p.materiais} info={p.info} />}
+      <EditorOpcoes catalogo grupos={grupos} aoMudar={setGrupos} materiais={p.materiais} info={p.info} />
 
       {linha === 'impressao3d' && (
         <>
@@ -368,6 +431,40 @@ function FormProduto(p: {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function MostruarioDoProduto(p: {
+  mostruario: MostruarioRegistro[];
+  capaId: string; setCapaId: (v: string) => void;
+  miolosIds: string[]; setMiolosIds: (v: string[]) => void;
+  adesivosIds: string[]; setAdesivosIds: (v: string[]) => void;
+}) {
+  const por = (t: MostruarioRegistro['tipo']) => p.mostruario.filter((m) => m.tipo === t).sort((a, b) => a.ordem - b.ordem);
+  const capas = por('capa'), miolos = por('modelo'), adesivos = por('adesivo');
+  const alternar = (lista: string[], id: string, set: (v: string[]) => void) => set(lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]);
+  if (p.mostruario.length === 0) return <p className="suave">O mostruário ainda está vazio. Importe o pacote ou adicione capas em Mostruário.</p>;
+  return (
+    <div>
+      <Campo rotulo="Capa">
+        <select value={p.capaId} onChange={(e) => p.setCapaId(e.target.value)}>
+          <option value="">—</option>
+          {capas.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+        </select>
+      </Campo>
+      <details style={{ marginTop: 6 }}>
+        <summary>Miolos ({p.miolosIds.length})</summary>
+        <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+          {miolos.map((m) => <label key={m.id} className="linha" style={{ gap: 6 }}><input type="checkbox" checked={p.miolosIds.includes(m.id)} onChange={() => alternar(p.miolosIds, m.id, p.setMiolosIds)} />{m.nome}</label>)}
+        </div>
+      </details>
+      <details style={{ marginTop: 6 }}>
+        <summary>Adesivos ({p.adesivosIds.length})</summary>
+        <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+          {adesivos.map((m) => <label key={m.id} className="linha" style={{ gap: 6 }}><input type="checkbox" checked={p.adesivosIds.includes(m.id)} onChange={() => alternar(p.adesivosIds, m.id, p.setAdesivosIds)} />{m.nome}</label>)}
+        </div>
+      </details>
     </div>
   );
 }

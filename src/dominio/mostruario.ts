@@ -4,7 +4,7 @@ export const FORMATO_PACOTE = 'craft-notes-unique/mostruario';
 
 export interface ItemPacote {
   id: string;
-  tipo: 'modelo' | 'adesivo';
+  tipo: 'modelo' | 'capa' | 'adesivo';
   nome: string;
   categoria: string;
   descricao: string;
@@ -53,18 +53,19 @@ export function lerPacote(json: string): ItemPacote[] {
   if (p.formato !== FORMATO_PACOTE) throw new Error('Este arquivo não é um pacote do Estúdio de Miolos.');
   const modelos = Array.isArray(p.modelos) ? p.modelos : [];
   const adesivos = Array.isArray(p.adesivos) ? p.adesivos : [];
-  return [...modelos.map((m) => lerItem(m, 'modelo')), ...adesivos.map((a) => lerItem(a, 'adesivo'))];
+  const capas = Array.isArray(p.capas) ? p.capas : []; // opcional
+  return [...modelos.map((m) => lerItem(m, 'modelo')), ...capas.map((c) => lerItem(c, 'capa')), ...adesivos.map((a) => lerItem(a, 'adesivo'))];
 }
 
 /** Modelos visíveis para o tamanho escolhido (adesivos não dependem de tamanho). */
 export function filtrar<T extends { tipo: string; visivel: boolean; tamanhos: string[]; ordem: number }>(
   itens: T[],
-  tipo: 'modelo' | 'adesivo',
+  tipo: 'modelo' | 'capa' | 'adesivo',
   tamanho?: string,
 ): T[] {
   return itens
     .filter((i) => i.tipo === tipo && i.visivel)
-    .filter((i) => tipo === 'adesivo' || !tamanho || i.tamanhos.includes(tamanho))
+    .filter((i) => tipo !== 'modelo' || !tamanho || i.tamanhos.includes(tamanho))
     .sort((a, b) => a.ordem - b.ordem);
 }
 

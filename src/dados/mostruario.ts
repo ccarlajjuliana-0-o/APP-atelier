@@ -11,7 +11,7 @@ export async function importarPacote(arquivo: File): Promise<{ total: number; nu
     const { preview: _p, ...resto } = it;
     registros.push({ ...resto, visivel: true, previa });
   }
-  const existentes = (await db.mostruario.toArray()).map((m) => m.id);
+  const existentes = (await db.mostruario.toArray()).filter((m) => !m.manual).map((m) => m.id);
   const ocultar = idsParaOcultar(existentes, registros.map((r) => r.id));
   await db.transaction('rw', db.mostruario, async () => {
     await db.mostruario.bulkPut(registros);
@@ -22,7 +22,7 @@ export async function importarPacote(arquivo: File): Promise<{ total: number; nu
   if (nuvem) {
     const sessao = await nuvem.auth.getSession();
     if (sessao.data.session) {
-      for (const r of registros) {
+      for (const r of registros.filter((x) => x.tipo !== 'capa')) { // a tabela da nuvem só conhece miolos e adesivos
         const ext = r.previa.type === 'image/png' ? 'png' : 'jpg';
         const caminho = `${r.tipo}/${r.id}.${ext}`;
         const up = await nuvem.storage.from('mostruario').upload(caminho, r.previa, { upsert: true, contentType: r.previa.type });

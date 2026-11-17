@@ -63,6 +63,9 @@ export async function exportarTudo(): Promise<Blob> {
     preferencias: await db.preferencias.toArray(),
     temas,
     identidade,
+    orcamentos: await db.orcamentos.toArray(),
+    extras: await db.extras.toArray(),
+    formularios: await db.formularios.toArray(),
   };
   return new Blob([JSON.stringify(dados)], { type: 'application/json' });
 }
@@ -76,7 +79,7 @@ export async function importarTudo(arquivo: File, opcoes: { prevalecer?: boolean
   if (dados.versao !== 1) throw new Error('Arquivo de backup de versão desconhecida.');
   if (opcoes.prevalecer) {
     const agora = new Date().toISOString();
-    for (const tabela of ['materiais', 'fornecedores', 'produtos', 'clientes', 'pedidos', 'despesas', 'ajustes', 'equipamentos', 'publicacoes', 'preferencias', 'temas', 'identidade', 'fontes']) {
+    for (const tabela of ['materiais', 'fornecedores', 'produtos', 'clientes', 'pedidos', 'despesas', 'ajustes', 'equipamentos', 'publicacoes', 'preferencias', 'temas', 'identidade', 'fontes', 'orcamentos', 'extras', 'formularios']) {
       if (Array.isArray(dados[tabela])) dados[tabela] = dados[tabela].map((r: any) => ({ ...r, atualizadoEm: agora }));
     }
   }
@@ -107,7 +110,7 @@ export async function importarTudo(arquivo: File, opcoes: { prevalecer?: boolean
   const identidade = await Promise.all(
     (dados.identidade ?? []).map(async (i: any) => ({ ...i, imagem: i.imagem ? await base64ParaBlob(i.imagem) : null })),
   );
-  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos, db.fornecedores, db.clientes, db.pedidos, db.despesas, db.ajustes, db.equipamentos, db.publicacoes, db.preferencias, db.temas, db.identidade], async () => {
+  await db.transaction('rw', [db.materiais, db.movimentacoes, db.fontes, db.escritas, db.mostruario, db.produtos, db.fornecedores, db.clientes, db.pedidos, db.despesas, db.ajustes, db.equipamentos, db.publicacoes, db.preferencias, db.temas, db.identidade, db.orcamentos, db.extras, db.formularios], async () => {
     await db.materiais.bulkPut(materiais);
     await db.movimentacoes.bulkPut(dados.movimentacoes ?? []);
     await db.fontes.bulkPut(fontes);
@@ -124,6 +127,9 @@ export async function importarTudo(arquivo: File, opcoes: { prevalecer?: boolean
     await db.preferencias.bulkPut(dados.preferencias ?? []);
     await db.temas.bulkPut(temas);
     await db.identidade.bulkPut(identidade);
+    await db.orcamentos.bulkPut(dados.orcamentos ?? []);
+    await db.extras.bulkPut(dados.extras ?? []);
+    await db.formularios.bulkPut(dados.formularios ?? []);
   });
 }
 

@@ -7,7 +7,9 @@ import {
   registrarPagamento, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
 import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
-import { FormularioItem } from '../componentes/FormularioItem.tsx';
+import { PersonalizacaoDoItem } from '../componentes/FormularioItem.tsx';
+import { listarExtras } from '../../dados/extras.ts';
+import type { ExtraCatalogo } from '../../dominio/extras.ts';
 import { acrescimoTotal, escolhasPadrao, gruposPendentes, linhasDeEscolhas, type EscolhaItem } from '../../dominio/opcoes.ts';
 import { formatarQuantidade, lerNumero } from '../../dominio/materiais.ts';
 import {
@@ -40,6 +42,7 @@ export function Pedidos() {
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [disp, setDisp] = useState<Record<string, number>>({});
   const [mostruario, setMostruario] = useState<MostruarioRegistro[]>([]);
+  const [extras, setExtras] = useState<ExtraCatalogo[]>([]);
   const [mult, setMult] = useState({ encadernacao: 1, impressao3d: 1 });
   const [filtro, setFiltro] = useState<Filtro>('abertos');
   const [aberto, setAberto] = useState<Pedido | null>(null);
@@ -52,6 +55,7 @@ export function Pedidos() {
     setClientes(await listarClientes());
     setProdutos(await listarProdutos());
     setMateriais(await listarMateriais());
+    setExtras(await listarExtras());
     setDisp(await disponiveis());
     setMostruario((await db.mostruario.toArray()).filter((m) => m.visivel));
     const aj = await db.ajustes.get('financeiro');
@@ -108,6 +112,7 @@ export function Pedidos() {
             disp={disp}
             info={info}
             mult={mult}
+            extras={extras}
             fechar={() => setAberto(null)}
             aoMudar={async (texto, reabrir) => {
               setMsg(texto);
@@ -189,6 +194,7 @@ function Detalhe(p: {
   disp: Record<string, number>;
   info: Record<string, InfoMaterial>;
   mult: { encadernacao: number; impressao3d: number };
+  extras: ExtraCatalogo[];
   fechar: () => void;
   aoMudar: (msg: string, reabrir?: Pedido | null) => Promise<void>;
 }) {
@@ -357,6 +363,7 @@ function Detalhe(p: {
       <h2>
         {ini.id ? `Pedido #${ini.numero}` : 'Novo pedido'} <span className="etiqueta" style={{ marginLeft: 8 }}>{STATUS[ini.status]}</span>
       </h2>
+      {ini.orcamentoNumero ? <p className="suave" style={{ marginTop: 0 }}>Veio do orçamento #{ini.orcamentoNumero}.</p> : null}
 
       <div className="formgrid">
         <Campo rotulo="Cliente">
@@ -411,8 +418,9 @@ function Detalhe(p: {
                   </select>
                 </Campo>
               </div>
-              <FormularioItem
+              <PersonalizacaoDoItem
                 grupos={p.produtos.find((x) => x.id === it.produtoId)?.opcoes ?? []}
+                extras={it.produtoId && p.produtos.find((x) => x.id === it.produtoId)?.linha !== 'impressao3d' ? p.extras : null}
                 escolhas={it.escolhas}
                 unidades={Math.max(1, Math.round(lerNumero(it.quantidade)) || 1)}
                 info={p.info}

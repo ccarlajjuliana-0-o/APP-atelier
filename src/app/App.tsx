@@ -7,7 +7,7 @@ import { Materiais } from './modulos/Materiais.tsx';
 import { Fornecedores } from './modulos/Fornecedores.tsx';
 import { Produtos } from './modulos/Produtos.tsx';
 import { Pedidos } from './modulos/Pedidos.tsx';
-import { Formulario } from './modulos/Formulario.tsx';
+import { Orcamentos } from './modulos/Orcamentos.tsx';
 import { Clientes } from './modulos/Clientes.tsx';
 import { Financeiro } from './modulos/Financeiro.tsx';
 import { Equipamentos } from './modulos/Equipamentos.tsx';
@@ -27,10 +27,10 @@ import { Nuvem, EstadoNuvem } from './modulos/Nuvem.tsx';
 const ATIVAS: { id: Tela; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
   { id: 'materiais', nome: 'Materiais' },
-  { id: 'produtos', nome: 'Produtos' },
+  { id: 'produtos', nome: 'Catálogo' },
   { id: 'fornecedores', nome: 'Fornecedores' },
+  { id: 'orcamentos', nome: 'Orçamentos' },
   { id: 'pedidos', nome: 'Pedidos' },
-  { id: 'formulario', nome: 'Formulário' },
   { id: 'clientes', nome: 'Clientes' },
   { id: 'financeiro', nome: 'Financeiro' },
   { id: 'equipamentos', nome: 'Equipamentos' },
@@ -118,7 +118,7 @@ export function App() {
             {tela === 'produtos' && <Produtos />}
             {tela === 'fornecedores' && <Fornecedores />}
             {tela === 'pedidos' && <Pedidos />}
-            {tela === 'formulario' && <Formulario />}
+            {tela === 'orcamentos' && <Orcamentos ir={setTela} />}
             {tela === 'clientes' && <Clientes />}
             {tela === 'financeiro' && <Financeiro />}
             {tela === 'equipamentos' && <Equipamentos />}

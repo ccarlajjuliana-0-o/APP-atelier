@@ -30,6 +30,7 @@ export interface GrupoOpcoes {
   tipo: TipoGrupo;
   obrigatorio: boolean;
   permiteOutro?: boolean; // campo "Outro:" nas perguntas de escolha
+  mostrarSe?: { grupoId: string; opcaoIds: string[] }; // só aparece se a pergunta indicada tiver uma destas respostas
   opcoes: OpcaoProduto[];
 }
 
@@ -134,6 +135,39 @@ export function alternarEscolha(escolhas: EscolhaItem[], g: GrupoOpcoes, o: Opca
   return [...resto, criarEscolha(g, o, info, multiplicador, undefined, unidades)];
 }
 
+export const ID_EXTRAS = '__extras';
+export const PREFIXO_AVULSO = '__avulso:';
+
+/** Extra avulso: nome e valor digitados na hora (não mexe no estoque). */
+export function adicionarAvulso(escolhas: EscolhaItem[], id: string, nome: string, valorCentavos: number): EscolhaItem[] {
+  return [...escolhas, { grupoId: ID_EXTRAS, grupoNome: 'Extras', opcaoId: PREFIXO_AVULSO + id, opcaoNome: nome.trim(), materialId: null, quantidade: 0, acrescimoCentavos: Math.max(0, Math.round(valorCentavos)) }];
+}
+
+export function removerEscolha(escolhas: EscolhaItem[], grupoId: string, opcaoId: string): EscolhaItem[] {
+  return escolhas.filter((e) => !(e.grupoId === grupoId && e.opcaoId === opcaoId));
+}
+
+export function grupoVisivel(g: GrupoOpcoes, grupos: GrupoOpcoes[], escolhas: EscolhaItem[]): boolean {
+  const c = g.mostrarSe;
+  if (!c) return true;
+  const pai = grupos.find((x) => x.id === c.grupoId);
+  if (!pai) return true;
+  if (!grupoVisivel(pai, grupos, escolhas)) return false;
+  return escolhas.some((e) => e.grupoId === c.grupoId && c.opcaoIds.includes(e.opcaoId));
+}
+
+/** Descarta respostas de perguntas que deixaram de aparecer (ex.: trocou wire-o por disco). */
+export function podarEscolhas(grupos: GrupoOpcoes[], escolhas: EscolhaItem[]): EscolhaItem[] {
+  let atual = escolhas;
+  for (let i = 0; i < 5; i++) {
+    const ocultos = new Set(grupos.filter((g) => !grupoVisivel(g, grupos, atual)).map((g) => g.id));
+    const prox = atual.filter((e) => !ocultos.has(e.grupoId));
+    if (prox.length === atual.length) return prox;
+    atual = prox;
+  }
+  return atual;
+}
+
 export function acrescimoTotal(escolhas: EscolhaItem[]): number {
   return escolhas.reduce((s, e) => s + e.acrescimoCentavos, 0);
 }
@@ -143,6 +177,7 @@ export function gruposPendentes(grupos: GrupoOpcoes[], escolhas: EscolhaItem[], 
   const semTexto = grupos.flatMap((g) => g.opcoes
     .filter((o) => o.pedeTexto && escolhas.some((e) => e.grupoId === g.id && e.opcaoId === o.id && !e.texto?.trim()))
     .map((o) => `${g.nome} (${o.pedeTexto})`));
+  grupos = grupos.filter((g) => grupoVisivel(g, grupos, escolhas));
   const faltam = grupos
     .filter((g) => g.obrigatorio && g.tipo !== 'secao' && !escolhas.some((e) => e.grupoId === g.id)
       && (!ehEscolha(g.tipo) || g.permiteOutro || g.opcoes.some((o) => opcaoDisponivel(o, info, unidades))))
