@@ -137,7 +137,7 @@ export async function avancarPedido(id: string): Promise<Pedido> {
 }
 
 /** Cancela e libera o material ainda reservado. Pedido pronto ou entregue não cancela. */
-export async function cancelarPedido(id: string): Promise<void> {
+export async function cancelarPedido(id: string, reembolsoCentavos = 0): Promise<void> {
   await db.transaction('rw', [db.pedidos, db.movimentacoes], async () => {
     const p = await db.pedidos.get(id);
     if (!p) throw new Error('Pedido não encontrado.');
@@ -151,8 +151,17 @@ export async function cancelarPedido(id: string): Promise<void> {
         observacao: `Cancelamento do pedido #${p.numero}`,
       });
     }
-    await db.pedidos.put({ ...p, status: 'cancelado' as StatusPedido, reservas: [], atualizadoEm: agora });
+    const pagamentos = comReembolso(p, reembolsoCentavos, `Reembolso do cancelamento do pedido #${p.numero}`);
+    await db.pedidos.put({ ...p, pagamentos, status: 'cancelado' as StatusPedido, reservas: [], atualizadoEm: agora });
   });
+}
+
+/** Acrescenta um pagamento negativo (reembolso) ao pedido; nunca reembolsa mais do que foi pago. */
+function comReembolso(p: Pedido, reembolsoCentavos: number, observacao: string): Pagamento[] {
+  const r = Math.round(reembolsoCentavos);
+  if (!(r > 0)) return p.pagamentos;
+  if (r > pagoDoPedido(p)) throw new Error('O reembolso não pode ser maior do que o valor já pago.');
+  return [...p.pagamentos, { data: hojeLocal(), valorCentavos: -r, observacao }];
 }
 
 /**
@@ -160,15 +169,16 @@ export async function cancelarPedido(id: string): Promise<void> {
  * reservado a mais é liberado. Se todos os itens ativos forem marcados, o pedido inteiro é cancelado.
  * Devolve o pedido e quanto já foi pago além do novo total (para devolver ou abater).
  */
-export async function cancelarItens(id: string, indices: number[]): Promise<{ pedido: Pedido; pagoAMaisCentavos: number; inteiro: boolean }> {
+export async function cancelarItens(id: string, indices: number[], reembolsoCentavos = 0): Promise<{ pedido: Pedido; pagoAMaisCentavos: number; inteiro: boolean }> {
   const antes = await db.pedidos.get(id);
   if (!antes) throw new Error('Pedido não encontrado.');
   const ativos = antes.itens.map((i, k) => ({ i, k })).filter((x) => !x.i.cancelado);
   const alvo = new Set(indices.filter((k) => ativos.some((a) => a.k === k)));
   if (alvo.size === 0) throw new Error('Escolha ao menos um item para cancelar.');
   if (alvo.size === ativos.length) {
-    await cancelarPedido(id);
-    return { pedido: (await db.pedidos.get(id))!, pagoAMaisCentavos: Math.max(0, pagoDoPedido(antes)), inteiro: true };
+    await cancelarPedido(id, reembolsoCentavos);
+    const depois = (await db.pedidos.get(id))!;
+    return { pedido: depois, pagoAMaisCentavos: Math.max(0, pagoDoPedido(depois)), inteiro: true };
   }
   return db.transaction('rw', [db.pedidos, db.movimentacoes, db.produtos], async () => {
     const p = await db.pedidos.get(id);
@@ -190,9 +200,11 @@ export async function cancelarItens(id: string, indices: number[]): Promise<{ pe
     }
     const nomes = [...alvo].map((k) => p.itens[k].descricao).join(', ');
     const novoTotal = totalCentavos(itens);
-    const pagoAMais = Math.max(0, pagoDoPedido(p) - novoTotal);
-    const nota = `Cancelamento parcial em ${hojeLocal().split('-').reverse().join('/')}: ${nomes}.${pagoAMais > 0 ? ` Já pago a mais: ${(pagoAMais / 100).toFixed(2).replace('.', ',')} (devolver ou abater).` : ''}`;
-    const novo: Pedido = { ...p, itens, reservas, observacoes: [p.observacoes, nota].filter(Boolean).join(' '), atualizadoEm: agora };
+    const pagamentos = comReembolso(p, reembolsoCentavos, `Reembolso do cancelamento parcial do pedido #${p.numero}`);
+    const pagoAMais = Math.max(0, pagamentos.reduce((t, x) => t + x.valorCentavos, 0) - novoTotal);
+    const dinheiro = (c: number) => (c / 100).toFixed(2).replace('.', ',');
+    const nota = `Cancelamento parcial em ${hojeLocal().split('-').reverse().join('/')}: ${nomes}.${reembolsoCentavos > 0 ? ` Reembolsado ${dinheiro(Math.round(reembolsoCentavos))}.` : ''}${pagoAMais > 0 ? ` Já pago a mais: ${dinheiro(pagoAMais)} (devolver ou abater).` : ''}`;
+    const novo: Pedido = { ...p, itens, pagamentos, reservas, observacoes: [p.observacoes, nota].filter(Boolean).join(' '), atualizadoEm: agora };
     await db.pedidos.put(novo);
     return { pedido: novo, pagoAMaisCentavos: pagoAMais, inteiro: false };
   });

@@ -37,7 +37,7 @@ export async function dadosDoCaixa(): Promise<{ pagamentos: PagamentoCaixa[]; co
   const nomeMat = new Map(materiais.map((m) => [m.id, m.nome]));
   const pagamentos: PagamentoCaixa[] = [];
   for (const p of pedidos) {
-    if (p.status === 'cancelado') continue; // pagamento de pedido cancelado: devolva e registre como despesa avulsa
+    // pedido cancelado também entra: o que foi reembolsado aparece como valor negativo, e o sinal mantido continua no caixa
     for (const g of p.pagamentos) {
       pagamentos.push({ data: g.data, valorCentavos: g.valorCentavos, descricao: `Pedido #${p.numero} · ${nomeCliente.get(p.clienteId ?? '') ?? 'cliente'}${g.observacao ? ` · ${g.observacao}` : ''}` });
     }

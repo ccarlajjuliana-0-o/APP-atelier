@@ -215,6 +215,8 @@ function Detalhe(p: {
   const [cancelando, setCancelando] = useState(false);
   const [parcial, setParcial] = useState(false);
   const [marcados, setMarcados] = useState<number[]>([]);
+  const [refModo, setRefModo] = useState<'itens' | 'manter' | 'outro'>('itens');
+  const [refOutro, setRefOutro] = useState('');
   const [repetindo, setRepetindo] = useState(false);
   const [repConfirmou, setRepConfirmou] = useState(false);
   const [repSinal, setRepSinal] = useState('');
@@ -341,10 +343,22 @@ function Detalhe(p: {
     }
   }
 
+  // reembolso sugerido para o cancelamento (só existe se já houve pagamento)
+  const valorMarcados = marcados.reduce((t, k) => t + Math.round((ini.itens[k]?.quantidade ?? 0) * (ini.itens[k]?.precoUnitCentavos ?? 0)), 0);
+  const totalDepoisParcial = totalCentavos(ini.itens.map((i, k) => (marcados.includes(k) ? { ...i, cancelado: true } : i)));
+  const sugItens = parcial ? Math.min(pago, valorMarcados) : Math.max(0, pago);
+  const sugManter = parcial ? Math.max(0, pago - totalDepoisParcial) : 0;
+  const reembolso = pago <= 0 ? 0
+    : refModo === 'itens' ? sugItens
+    : refModo === 'manter' ? sugManter
+    : Math.round((refOutro.trim() ? lerNumero(refOutro) : 0) * 100);
+  const reembolsoInvalido = Number.isNaN(reembolso) || reembolso < 0 || reembolso > pago;
+
   async function aoCancelar() {
+    if (reembolsoInvalido) return setErro('Confira o valor do reembolso: ele não pode passar do que já foi pago.');
     try {
-      await cancelarPedido(ini.id);
-      await p.aoMudar(`Pedido #${ini.numero} cancelado. O material reservado foi liberado.`, null);
+      await cancelarPedido(ini.id, reembolso);
+      await p.aoMudar(`Pedido #${ini.numero} cancelado. O material reservado foi liberado.${reembolso > 0 ? ` Reembolso de ${centavosParaTexto(reembolso)} registrado.` : ''}`, null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível cancelar.');
     }
@@ -353,11 +367,13 @@ function Detalhe(p: {
   async function aoCancelarItens() {
     setErro('');
     try {
-      const r = await cancelarItens(ini.id, marcados);
+      if (reembolsoInvalido) return setErro('Confira o valor do reembolso: ele não pode passar do que já foi pago.');
+      const r = await cancelarItens(ini.id, marcados, reembolso);
+      const reemb = reembolso > 0 ? ` Reembolso de ${centavosParaTexto(reembolso)} registrado.` : '';
       const aMais = r.pagoAMaisCentavos > 0 ? ` Já foi pago ${centavosParaTexto(r.pagoAMaisCentavos)} a mais: devolva ou abata (ficou anotado nas observações).` : '';
       await p.aoMudar(r.inteiro
-        ? `Pedido #${ini.numero} cancelado por inteiro. O material reservado foi liberado.${aMais}`
-        : `${marcados.length === 1 ? 'Item cancelado' : 'Itens cancelados'} no pedido #${ini.numero}. O total e o material reservado foram ajustados.${aMais}`, r.inteiro ? null : r.pedido);
+        ? `Pedido #${ini.numero} cancelado por inteiro. O material reservado foi liberado.${reemb}${aMais}`
+        : `${marcados.length === 1 ? 'Item cancelado' : 'Itens cancelados'} no pedido #${ini.numero}. O total e o material reservado foram ajustados.${reemb}${aMais}`, r.inteiro ? null : r.pedido);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui cancelar.');
     }
@@ -598,7 +614,7 @@ function Detalhe(p: {
           <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => { setRepetindo(true); setCancelando(false); }}>Pedir novamente</button>
         )}
         {ini.id && podeCancelar(ini.status) && !cancelando && (
-          <button className="btn" style={ini.id && !repetindo ? undefined : { marginLeft: 'auto' }} onClick={() => { setCancelando(true); setParcial(false); setMarcados([]); }}>Cancelar…</button>
+          <button className="btn" style={ini.id && !repetindo ? undefined : { marginLeft: 'auto' }} onClick={() => { setCancelando(true); setParcial(false); setMarcados([]); setRefModo('itens'); setRefOutro(''); }}>Cancelar…</button>
         )}
       </div>
       {ini.id && repetindo && (
@@ -643,6 +659,31 @@ function Detalhe(p: {
             </div>
           ) : (
             <p className="suave" style={{ marginTop: 6 }}>Cancelar o pedido inteiro libera todo o material reservado.</p>
+          )}
+          {pago > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <strong>Dinheiro já recebido: {centavosParaTexto(pago)}</strong>
+              <label className="linha" style={{ gap: 6, marginTop: 4 }}>
+                <input type="radio" name="reembolso" checked={refModo === 'itens'} onChange={() => setRefModo('itens')} />
+                {parcial ? `Reembolsar o valor dos itens cancelados (${centavosParaTexto(sugItens)})` : `Reembolsar tudo (${centavosParaTexto(sugItens)})`}
+              </label>
+              <label className="linha" style={{ gap: 6 }}>
+                <input type="radio" name="reembolso" checked={refModo === 'manter'} onChange={() => setRefModo('manter')} />
+                {parcial
+                  ? (sugManter > 0 ? `Manter o valor pago para o que ficou (reembolsar só o excedente, ${centavosParaTexto(sugManter)})` : 'Manter o valor pago como sinal do que ficou (sem reembolso)')
+                  : 'Não reembolsar agora (o valor fica registrado no pedido)'}
+              </label>
+              <label className="linha" style={{ gap: 6 }}>
+                <input type="radio" name="reembolso" checked={refModo === 'outro'} onChange={() => setRefModo('outro')} /> Outro valor
+                {refModo === 'outro' && <input type="text" inputMode="decimal" placeholder="R$" value={refOutro} onChange={(e) => setRefOutro(e.target.value)} style={{ maxWidth: 120 }} />}
+              </label>
+              {parcial && marcados.length > 0 && (
+                <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>
+                  Novo total do pedido: {centavosParaTexto(totalDepoisParcial)}. Depois do reembolso de {centavosParaTexto(reembolso)}, já terão sido pagos {centavosParaTexto(pago - reembolso)}, faltando {centavosParaTexto(Math.max(0, totalDepoisParcial - (pago - reembolso)))}.
+                </p>
+              )}
+              <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>O reembolso entra no pedido e no caixa como valor negativo, na data de hoje.</p>
+            </div>
           )}
           <div className="linha" style={{ marginTop: 8 }}>
             {parcial
