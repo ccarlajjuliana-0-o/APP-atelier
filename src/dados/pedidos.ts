@@ -273,3 +273,16 @@ export async function repetirPedido(id: string, confirmou: boolean, sinalCentavo
   }
   return ped;
 }
+
+/** Reembolso avulso, para pedido já cancelado (ou pago a mais): entra como pagamento negativo. */
+export async function reembolsarPedido(id: string, centavos: number): Promise<Pedido> {
+  return db.transaction('rw', db.pedidos, async () => {
+    const p = await db.pedidos.get(id);
+    if (!p) throw new Error('Pedido não encontrado.');
+    if (!(Math.round(centavos) > 0)) throw new Error('Informe o valor do reembolso.');
+    const pagamentos = comReembolso(p, centavos, `Reembolso do pedido #${p.numero}`);
+    const novo = { ...p, pagamentos, atualizadoEm: new Date().toISOString() };
+    await db.pedidos.put(novo);
+    return novo;
+  });
+}

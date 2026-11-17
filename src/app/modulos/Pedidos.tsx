@@ -4,7 +4,7 @@ import { listarMateriais } from '../../dados/materiais.ts';
 import { listarProdutos } from '../../dados/produtos.ts';
 import {
   avancarPedido, cancelarItens, cancelarPedido, disponiveis, hojeLocal, listarClientes, listarPedidos, pedidoNovo,
-  registrarPagamento, repetirPedido, salvarCliente, salvarPedido,
+  registrarPagamento, reembolsarPedido, repetirPedido, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
 import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
 import { PersonalizacaoDoItem } from '../componentes/FormularioItem.tsx';
@@ -217,6 +217,8 @@ function Detalhe(p: {
   const [marcados, setMarcados] = useState<number[]>([]);
   const [refModo, setRefModo] = useState<'itens' | 'manter' | 'outro'>('itens');
   const [refOutro, setRefOutro] = useState('');
+  const [reembolsando, setReembolsando] = useState(false);
+  const [valorReemb, setValorReemb] = useState('');
   const [repetindo, setRepetindo] = useState(false);
   const [repConfirmou, setRepConfirmou] = useState(false);
   const [repSinal, setRepSinal] = useState('');
@@ -380,6 +382,20 @@ function Detalhe(p: {
   }
 
   const totalRepeticao = totalCentavos(ini.itens.map((i) => ({ ...i, cancelado: false })));
+
+  const sobraReembolsavel = ini.status === 'cancelado' ? Math.max(0, pago) : Math.max(0, pago - total);
+
+  async function aoReembolsar() {
+    setErro('');
+    const v = lerNumero(valorReemb || reais(sobraReembolsavel));
+    if (Number.isNaN(v) || v <= 0) return setErro('Informe o valor do reembolso.');
+    try {
+      const novo = await reembolsarPedido(ini.id, Math.round(v * 100));
+      await p.aoMudar(`Reembolso de ${centavosParaTexto(Math.round(v * 100))} registrado no pedido #${novo.numero}.`, novo);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui registrar o reembolso.');
+    }
+  }
 
   async function aoRepetir() {
     setErro('');
@@ -610,13 +626,33 @@ function Detalhe(p: {
           </button>
         )}
         <button className="btn" onClick={p.fechar}>Fechar</button>
+        {ini.id && sobraReembolsavel > 0 && !reembolsando && (
+          <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => { setReembolsando(true); setRepetindo(false); setValorReemb(reais(sobraReembolsavel)); }}>Reembolsar…</button>
+        )}
         {ini.id && !repetindo && (
-          <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => { setRepetindo(true); setCancelando(false); }}>Pedir novamente</button>
+          <button className="btn" style={ini.id && sobraReembolsavel > 0 && !reembolsando ? undefined : { marginLeft: 'auto' }} onClick={() => { setRepetindo(true); setCancelando(false); }}>Pedir novamente</button>
         )}
         {ini.id && podeCancelar(ini.status) && !cancelando && (
           <button className="btn" style={ini.id && !repetindo ? undefined : { marginLeft: 'auto' }} onClick={() => { setCancelando(true); setParcial(false); setMarcados([]); setRefModo('itens'); setRefOutro(''); }}>Cancelar…</button>
         )}
       </div>
+      {ini.id && reembolsando && (
+        <div className="cartao" style={{ background: 'var(--neutro)', marginTop: 12 }}>
+          <strong>Reembolsar</strong>
+          <p className="suave" style={{ marginTop: 6 }}>
+            Já recebido neste pedido: {centavosParaTexto(pago)}.{ini.status === 'cancelado' ? '' : ` Total atual: ${centavosParaTexto(total)}.`} Dá para devolver até {centavosParaTexto(sobraReembolsavel)}.
+          </p>
+          <div className="linha" style={{ marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
+            <input type="text" inputMode="decimal" placeholder="Valor (R$)" value={valorReemb} onChange={(e) => setValorReemb(e.target.value)} style={{ maxWidth: 180 }} />
+            <button className="btn" onClick={() => setValorReemb(reais(sobraReembolsavel))}>Tudo ({centavosParaTexto(sobraReembolsavel)})</button>
+          </div>
+          <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>Entra no pedido e no caixa como valor negativo, na data de hoje.</p>
+          <div className="linha" style={{ marginTop: 8 }}>
+            <button className="btn primario" onClick={() => void aoReembolsar()}>Registrar reembolso</button>
+            <button className="btn" onClick={() => setReembolsando(false)}>Voltar</button>
+          </div>
+        </div>
+      )}
       {ini.id && repetindo && (
         <div className="cartao" style={{ background: 'var(--neutro)', marginTop: 12 }}>
           <strong>Pedir novamente</strong>
