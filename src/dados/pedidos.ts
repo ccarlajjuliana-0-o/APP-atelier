@@ -239,3 +239,25 @@ export async function duracaoDosMateriais(): Promise<Record<string, Duracao>> {
   }
   return out;
 }
+
+/**
+ * "Pedir novamente": cria um pedido novo com os mesmos itens (inclusive os que foram cancelados antes).
+ * Se a cliente confirmou e/ou deu sinal, já confirma e reserva o material; senão fica como orçamento.
+ */
+export async function repetirPedido(id: string, confirmou: boolean, sinalCentavos: number): Promise<Pedido> {
+  const orig = await db.pedidos.get(id);
+  if (!orig) throw new Error('Pedido não encontrado.');
+  const itens = orig.itens.map((i) => ({ ...i, cancelado: false }));
+  if (itens.length === 0) throw new Error('Este pedido não tem itens para repetir.');
+  let ped = await salvarPedido({
+    ...pedidoNovo(0), clienteId: orig.clienteId, tipo: orig.tipo, itens, prazoDias: orig.prazoDias,
+    observacoes: `Repetição do pedido #${orig.numero}.`,
+  });
+  if (confirmou || sinalCentavos > 0) {
+    ped = await avancarPedido(ped.id);
+    if (sinalCentavos > 0) {
+      ped = await registrarPagamento(ped.id, { data: hojeLocal(), valorCentavos: Math.round(sinalCentavos), observacao: `Sinal (repetição do pedido #${orig.numero})` });
+    }
+  }
+  return ped;
+}

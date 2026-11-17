@@ -4,7 +4,7 @@ import { listarMateriais } from '../../dados/materiais.ts';
 import { listarProdutos } from '../../dados/produtos.ts';
 import {
   avancarPedido, cancelarItens, cancelarPedido, disponiveis, hojeLocal, listarClientes, listarPedidos, pedidoNovo,
-  registrarPagamento, salvarCliente, salvarPedido,
+  registrarPagamento, repetirPedido, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
 import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
 import { PersonalizacaoDoItem } from '../componentes/FormularioItem.tsx';
@@ -215,6 +215,9 @@ function Detalhe(p: {
   const [cancelando, setCancelando] = useState(false);
   const [parcial, setParcial] = useState(false);
   const [marcados, setMarcados] = useState<number[]>([]);
+  const [repetindo, setRepetindo] = useState(false);
+  const [repConfirmou, setRepConfirmou] = useState(false);
+  const [repSinal, setRepSinal] = useState('');
   const [confirmaEntrega, setConfirmaEntrega] = useState(false);
   const [valorPag, setValorPag] = useState('');
   const [obsPag, setObsPag] = useState('');
@@ -357,6 +360,20 @@ function Detalhe(p: {
         : `${marcados.length === 1 ? 'Item cancelado' : 'Itens cancelados'} no pedido #${ini.numero}. O total e o material reservado foram ajustados.${aMais}`, r.inteiro ? null : r.pedido);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui cancelar.');
+    }
+  }
+
+  const totalRepeticao = totalCentavos(ini.itens.map((i) => ({ ...i, cancelado: false })));
+
+  async function aoRepetir() {
+    setErro('');
+    const sinal = repSinal.trim() ? lerNumero(repSinal) : 0;
+    if (Number.isNaN(sinal) || sinal < 0) return setErro('Confira o valor do sinal.');
+    try {
+      const novo = await repetirPedido(ini.id, repConfirmou, Math.round(sinal * 100));
+      await p.aoMudar(`Criei o pedido #${novo.numero} a partir do #${ini.numero}${novo.status === 'orcamento' ? ' (ainda como orçamento, aguardando a confirmação)' : ' (confirmado e material reservado)'}.`, novo);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui repetir o pedido.');
     }
   }
 
@@ -577,10 +594,33 @@ function Detalhe(p: {
           </button>
         )}
         <button className="btn" onClick={p.fechar}>Fechar</button>
+        {ini.id && !repetindo && (
+          <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => { setRepetindo(true); setCancelando(false); }}>Pedir novamente</button>
+        )}
         {ini.id && podeCancelar(ini.status) && !cancelando && (
-          <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => { setCancelando(true); setParcial(false); setMarcados([]); }}>Cancelar…</button>
+          <button className="btn" style={ini.id && !repetindo ? undefined : { marginLeft: 'auto' }} onClick={() => { setCancelando(true); setParcial(false); setMarcados([]); }}>Cancelar…</button>
         )}
       </div>
+      {ini.id && repetindo && (
+        <div className="cartao" style={{ background: 'var(--neutro)', marginTop: 12 }}>
+          <strong>Pedir novamente</strong>
+          <p className="suave" style={{ marginTop: 6 }}>
+            Vou criar um pedido novo com os mesmos itens ({centavosParaTexto(totalRepeticao)}){ini.itens.some((i) => i.cancelado) ? ', incluindo os que foram cancelados' : ''}, para a mesma cliente. É só dizer se ela confirmou e se deu sinal.
+          </p>
+          <label className="linha" style={{ marginTop: 6 }}>
+            <input type="checkbox" checked={repConfirmou} onChange={(e) => setRepConfirmou(e.target.checked)} /> A cliente confirmou o pedido
+          </label>
+          <div className="linha" style={{ marginTop: 6, gap: 8, flexWrap: 'wrap' }}>
+            <input type="text" inputMode="decimal" placeholder="Sinal recebido (R$), se houver" value={repSinal} onChange={(e) => setRepSinal(e.target.value)} style={{ maxWidth: 260 }} />
+            <button className="btn" onClick={() => setRepSinal(reais(Math.round(totalRepeticao * ENTRADA_PCT / 100)))}>Usar {ENTRADA_PCT}%</button>
+          </div>
+          <p className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>Com confirmação e/ou sinal, o pedido já entra confirmado e o material fica reservado. Sem nenhum dos dois, ele fica como orçamento para você ajustar antes. Os preços são os mesmos do pedido original.</p>
+          <div className="linha" style={{ marginTop: 8 }}>
+            <button className="btn primario" onClick={() => void aoRepetir()}>Criar o novo pedido</button>
+            <button className="btn" onClick={() => setRepetindo(false)}>Voltar</button>
+          </div>
+        </div>
+      )}
       {ini.id && podeCancelar(ini.status) && cancelando && (
         <div className="cartao" style={{ background: 'var(--neutro)', marginTop: 12 }}>
           <strong>Cancelar</strong>
