@@ -259,7 +259,7 @@ export async function duracaoDosMateriais(): Promise<Record<string, Duracao>> {
 export async function repetirPedido(id: string, confirmou: boolean, sinalCentavos: number): Promise<Pedido> {
   const orig = await db.pedidos.get(id);
   if (!orig) throw new Error('Pedido não encontrado.');
-  const itens = orig.itens.map((i) => ({ ...i, cancelado: false }));
+  const itens = orig.itens.map((i) => ({ ...i, cancelado: false, devolvido: false }));
   if (itens.length === 0) throw new Error('Este pedido não tem itens para repetir.');
   let ped = await salvarPedido({
     ...pedidoNovo(0), clienteId: orig.clienteId, tipo: orig.tipo, itens, prazoDias: orig.prazoDias,

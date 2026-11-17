@@ -7,6 +7,7 @@ import {
   registrarPagamento, reembolsarPedido, repetirPedido, salvarCliente, salvarPedido,
 } from '../../dados/pedidos.ts';
 import { centavosParaTexto, microParaCentavos } from '../../dominio/dinheiro.ts';
+import { DevolucaoDoPedido } from '../componentes/DevolucaoPedido.tsx';
 import { PersonalizacaoDoItem } from '../componentes/FormularioItem.tsx';
 import { listarExtras } from '../../dados/extras.ts';
 import type { ExtraCatalogo } from '../../dominio/extras.ts';
@@ -381,7 +382,7 @@ function Detalhe(p: {
     }
   }
 
-  const totalRepeticao = totalCentavos(ini.itens.map((i) => ({ ...i, cancelado: false })));
+  const totalRepeticao = totalCentavos(ini.itens.map((i) => ({ ...i, cancelado: false, devolvido: false })));
 
   const sobraReembolsavel = ini.status === 'cancelado' ? Math.max(0, pago) : Math.max(0, pago - total);
 
@@ -512,9 +513,9 @@ function Detalhe(p: {
             <thead><tr><th>Item</th><th>Qtd</th><th>Preço</th><th>Subtotal</th></tr></thead>
             <tbody>
               {ini.itens.map((i, k) => (
-                <tr key={k} style={i.cancelado ? { opacity: 0.55, textDecoration: 'line-through' } : undefined}>
+                <tr key={k} style={i.cancelado || i.devolvido ? { opacity: 0.55, textDecoration: 'line-through' } : undefined}>
                   <td>
-                    <strong>{i.descricao}</strong>{i.cancelado && <span className="etiqueta" style={{ marginLeft: 6, textDecoration: 'none', display: 'inline-block' }}>cancelado</span>}
+                    <strong>{i.descricao}</strong>{(i.cancelado || i.devolvido) && <span className="etiqueta" style={{ marginLeft: 6, textDecoration: 'none', display: 'inline-block' }}>{i.devolvido ? 'devolvido' : 'cancelado'}</span>}
                     {(i.modeloNome || i.adesivoNome) && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{[i.modeloNome && `modelo: ${i.modeloNome}`, i.adesivoNome && `adesivos: ${i.adesivoNome}`].filter(Boolean).join(' · ')}</div>}
                     {i.escolhas && linhasDeEscolhas(i.escolhas).map((l, n) => <div key={n} className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{l}</div>)}
                     {i.observacao && <div className="suave" style={{ fontSize: 'calc(13px * var(--escala, 1))' }}>{i.observacao}</div>}
@@ -653,6 +654,7 @@ function Detalhe(p: {
           </div>
         </div>
       )}
+      {ini.id && (ini.status === 'entregue' || (ini.devolucoes?.length ?? 0) > 0) && <DevolucaoDoPedido pedido={ini} aoMudar={p.aoMudar} />}
       {ini.id && repetindo && (
         <div className="cartao" style={{ background: 'var(--neutro)', marginTop: 12 }}>
           <strong>Pedir novamente</strong>

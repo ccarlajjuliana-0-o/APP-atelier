@@ -6,6 +6,7 @@ import type { GrupoOpcoes } from '../dominio/opcoes.ts';
 import type { ExtraCatalogo } from '../dominio/extras.ts';
 import type { Orcamento } from '../dominio/orcamentos.ts';
 import type { ItemPedido, Pagamento, Reserva, StatusPedido } from '../dominio/pedidos.ts';
+import type { Devolucao } from '../dominio/devolucoes.ts';
 import type { TipoPedido } from '../dominio/prazo.ts';
 import type { Ajustes, Despesa } from '../dominio/financeiro.ts';
 import type { Equipamento } from '../dominio/equipamentos.ts';
@@ -135,6 +136,7 @@ export interface Pedido {
   reservas: Reserva[]; // material reservado e ainda não baixado
   orcamentoId?: string | null;
   orcamentoNumero?: number | null;
+  devolucoes?: Devolucao[]; // devoluções de pedido entregue (até 7 dias)
   atualizadoEm: string;
 }
 

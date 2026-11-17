@@ -45,6 +45,7 @@ export interface ItemPedido {
   precoBaseCentavos?: number; // preço sem as opções (precoUnit = base + opções)
   personalizado?: boolean; // montado pelo formulário (sem produto do catálogo)
   cancelado?: boolean; // cancelamento parcial: continua listado, mas não conta no total nem no material
+  devolvido?: boolean; // devolvido com reembolso: continua listado, mas não conta no total
 }
 
 export interface Pagamento {
@@ -59,7 +60,7 @@ export interface Reserva {
 }
 
 export function itensAtivos(itens: ItemPedido[]): ItemPedido[] {
-  return itens.filter((i) => !i.cancelado);
+  return itens.filter((i) => !i.cancelado && !i.devolvido);
 }
 
 export function totalCentavos(itens: ItemPedido[]): number {
