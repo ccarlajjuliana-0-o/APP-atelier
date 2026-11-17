@@ -386,9 +386,37 @@ function FormProduto(p: {
             <p className="suave" style={{ marginTop: 6 }}>Marque monocromático ou multicolorido para escolher a cor e o filamento.</p>
           )}
           <div className="formgrid" style={{ marginTop: 6 }}>
-            <Campo rotulo="Acabamentos (ex.: lixado, primer, verniz)">
-              <input type="text" list="acabamentos-3d" value={ficha.acabamentos ?? ''} onChange={(e) => setFicha({ ...ficha, acabamentos: e.target.value })} />
-              <datalist id="acabamentos-3d">{['Lixado', 'Primer', 'Verniz', 'Polimento', 'Sem acabamento'].map((x) => <option key={x} value={x} />)}</datalist>
+            <Campo rotulo="Acabamentos (marque quantos quiser)">
+              {(() => {
+                const PADRAO = ['Lixado', 'Primer', 'Verniz', 'Polimento', 'Massa/preenchimento', 'Sem acabamento'];
+                const atuais = (ficha.acabamentos ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+                const gravar = (lista: string[]) => setFicha({ ...ficha, acabamentos: lista.join(', ') });
+                const alternar = (nome: string) => gravar(atuais.includes(nome) ? atuais.filter((x) => x !== nome) : [...atuais, nome]);
+                const extras = atuais.filter((x) => !PADRAO.includes(x));
+                return (
+                  <div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+                      {[...PADRAO, ...extras].map((nome) => (
+                        <label key={nome} className="linha">
+                          <input type="checkbox" checked={atuais.includes(nome)} onChange={() => alternar(nome)} /> {nome}
+                        </label>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Outro acabamento… (Enter para adicionar)"
+                      style={{ marginTop: 6 }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        const v = e.currentTarget.value.replace(/,/g, ' ').trim();
+                        if (v && !atuais.includes(v)) gravar([...atuais, v]);
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                  </div>
+                );
+              })()}
             </Campo>
           </div>
           <label className="linha" style={{ marginTop: 8 }}>
